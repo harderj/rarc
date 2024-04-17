@@ -1,0 +1,98 @@
+{
+	// Use IntelliSense to learn about possible attributes.
+	// Hover to view descriptions of existing attributes.
+	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "Debug executable 'rarc'",
+			"cargo": {
+				"args": [
+					"build",
+					"--bin=rarc",
+					"--package=rarc"
+				],
+				"filter": {
+					"name": "rarc",
+					"kind": "bin"
+				}
+			},
+			"args": [],
+			"cwd": "${workspaceFolder}"
+		},
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "Debug example '2_arcs'",
+			"cargo": {
+				"args": [
+					"build",
+					"--example=2_arcs",
+					"--package=rarc"
+				],
+				"filter": {
+					"name": "2_arcs",
+					"kind": "example"
+				}
+			},
+			"args": [],
+			"cwd": "${workspaceFolder}"
+		},
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "Debug example '3_arcs'",
+			"cargo": {
+				"args": [
+					"build",
+					"--example=3_arcs",
+					"--package=rarc"
+				],
+				"filter": {
+					"name": "3_arcs",
+					"kind": "example"
+				}
+			},
+			"args": [],
+			"cwd": "${workspaceFolder}"
+		},
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "Debug example '3_circle_collision'",
+			"cargo": {
+				"args": [
+					"build",
+					"--example=3_circle_collision",
+					"--package=rarc"
+				],
+				"filter": {
+					"name": "3_circle_collision",
+					"kind": "example"
+				}
+			},
+			"args": [],
+			"cwd": "${workspaceFolder}"
+		},
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "Debug example '3_points_to_circle'",
+			"cargo": {
+				"args": [
+					"build",
+					"--example=3_points_to_circle",
+					"--package=rarc"
+				],
+				"filter": {
+					"name": "3_points_to_circle",
+					"kind": "example"
+				}
+			},
+			"args": [],
+			"cwd": "${workspaceFolder}"
+		}
+	]
+}
