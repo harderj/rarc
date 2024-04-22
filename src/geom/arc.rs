@@ -1,6 +1,8 @@
-use std::{borrow::Borrow, f32::consts::PI};
+use std::f32::consts::PI;
 
-use crate::math::circle_center_from_3_points;
+use crate::math::{
+	circle_center_from_3_points, two_circle_collision, FloatVec2,
+};
 use bevy::{
 	ecs::{component::Component, system::Resource},
 	gizmos::gizmos::Gizmos,
@@ -15,7 +17,7 @@ use rand_distr::{Distribution, UnitDisc};
 pub struct Arc {
 	pub a: Vec2,
 	pub b: Vec2,
-	pub s: f32, // arc height (positive is right of A->B)
+	pub bend: f32, // arc height (positive is right of A->B)
 }
 
 impl Arc {
@@ -23,12 +25,12 @@ impl Arc {
 		self.b - self.a
 	}
 
-	pub fn sv(&self) -> Vec2 {
-		self.ab().rotate(Vec2::NEG_Y).normalize() * self.s
+	pub fn outward(&self) -> Vec2 {
+		self.ab().rotate(Vec2::NEG_Y)
 	}
 
 	pub fn extreme(&self) -> Vec2 {
-		self.sv() + 0.5 * (self.a + self.b)
+		0.5 * (self.a + self.b) + 0.5 * self.outward() * self.bend
 	}
 
 	pub fn center(&self) -> Vec2 {
@@ -51,7 +53,7 @@ impl Arc {
 		let mut r = Mat2::from_cols(self.ca(), self.cb())
 			.determinant()
 			.atan2(self.ca().dot(self.cb()))
-			* f32::signum(self.s);
+			* f32::signum(self.bend);
 		if r < 0.0 {
 			r += 2.0 * PI
 		}
@@ -61,24 +63,38 @@ impl Arc {
 	pub fn angle_a(&self) -> f32 {
 		let ca = self.ca();
 		f32::atan2(ca.y, ca.x)
-		//self.ca().angle_between(Vec2::X)
 	}
 
 	pub fn angle_b(&self) -> f32 {
 		let cb = self.cb();
 		f32::atan2(cb.y, cb.x)
-		// self.cb().angle_between(Vec2::X)
 	}
 
-	fn shrink(&mut self, amount: f32, neighbors: (&Arc, &Arc)) {
+	fn shrink(&mut self, amount: f32, mut previous: Arc, mut next: Arc) {
+		previous.shrink_naive(amount);
+		self.shrink_naive(amount);
+		next.shrink_naive(amount);
+		let previous_circle = FloatVec2 {
+			v: self.a,
+			f: self.radius(),
+		};
+		let self_circle = FloatVec2 {
+			v: previous.a,
+			f: previous.radius(),
+		};
+		let cols = two_circle_collision(previous_circle, self_circle);
+		// println!("previous: {}, self: {}", previous_circle, self_circle);
+		if cols.len() > 1 { self.a = cols[1]; }
+	}
+
+	fn shrink_naive(&mut self, amount: f32) {
 		let r = self.radius();
 		let c = self.center();
 		let ang_a = self.angle_a();
 		let ang_b = self.angle_b();
-		let new_a =
-			c + (r - amount) * Vec2::new(f32::cos(ang_a), f32::sin(ang_a));
-		let new_b =
-			c + (r - amount) * Vec2::new(f32::cos(ang_b), f32::sin(ang_b));
+		let new_r = r - amount * f32::signum(self.bend);
+		let new_a = c + new_r * Vec2::new(f32::cos(ang_a), f32::sin(ang_a));
+		let new_b = c + new_r * Vec2::new(f32::cos(ang_b), f32::sin(ang_b));
 		self.a = new_a;
 		self.b = new_b;
 	}
@@ -92,7 +108,7 @@ impl Arc {
 		);
 		gizmos.arc_2d(
 			Vec2::from_array(self.center().into()),
-			self.sv().angle_between(Vec2::Y),
+			self.outward().angle_between(Vec2::Y) + (self.bend < 0.0).then_some(PI).unwrap_or(0.0),
 			self.angle(),
 			self.radius(),
 			color,
@@ -109,7 +125,14 @@ pub struct ArcPoly {
 impl ArcPoly {
 	pub fn draw(&self, gizmos: &mut Gizmos, already_shrunk: bool) {
 		for arc in self.original.iter() {
-			arc.downcast_ref::<Arc>().unwrap().draw(gizmos, if already_shrunk { Color::BLUE } else { Color::GREEN }); // TODO: is this right?
+			arc.downcast_ref::<Arc>().unwrap().draw(
+				gizmos,
+				if already_shrunk {
+					Color::BLUE
+				} else {
+					Color::GREEN
+				},
+			); // TODO: is this right?
 		}
 		if !already_shrunk {
 			let shr = self.shrunk();
@@ -122,15 +145,15 @@ impl ArcPoly {
 	pub fn shrunk(&self) -> Vec<ArcPoly> {
 		let mut arcs = self.original.clone();
 		let n = arcs.len();
-		let i: usize = 0;
+		// println!("n: {}", n);
+		let mut i: usize = 0;
 		for arc in arcs.iter_mut() {
 			arc.shrink(
 				self.shrink,
-				(
-					self.original[n + i - 1 % n].borrow(),
-					self.original[i + 1 % n].borrow(),
-				),
+				self.original[(n + i - 1) % n].clone(),
+				self.original[(i + 1) % n].clone(),
 			);
+			i += 1;
 		}
 		Vec::from([ArcPoly {
 			original: arcs,
@@ -143,25 +166,31 @@ impl ArcPoly {
 		let mut previous = Vec2::X * gen_input.r;
 		let mut res = ArcPoly::default();
 		res.shrink = gen_input.shrink;
-		for i in 1..gen_input.n {
-			let next = Vec2::new(
-				f32::cos(2.0 * PI * (i as f32) / (gen_input.n as f32)),
-				f32::sin(2.0 * PI * (i as f32) / (gen_input.n as f32)),
-			) * gen_input.r + Vec2::from_array(
-				UnitDisc.sample(&mut rng),
-			) * gen_input.offset_noise;
+		for i in 1..(gen_input.n + 1) {
+			let next = if i == gen_input.n {
+				res.original[0].a
+			} else {
+				Vec2::new(
+					f32::cos(2.0 * PI * (i as f32) / (gen_input.n as f32)),
+					f32::sin(2.0 * PI * (i as f32) / (gen_input.n as f32)),
+				) * gen_input.r + Vec2::from_array(UnitDisc.sample(&mut rng))
+					* gen_input.offset_noise
+			};
+			let absolute_bend = rng.gen_range(
+				gen_input.bend_min
+					..f32::max(gen_input.bend_min + 0.01, gen_input.bend_max),
+			);
 			res.original.push(Arc {
 				a: previous,
 				b: next,
-				s: rng.gen::<f32>() * gen_input.s_noise,
+				bend: if rng.gen_bool(0.5) {
+					absolute_bend
+				} else {
+					-absolute_bend
+				},
 			});
 			previous = next;
 		}
-		res.original.push(Arc {
-			a: previous,
-			b: Vec2::X * gen_input.r,
-			s: rng.gen::<f32>() * gen_input.s_noise,
-		});
 		res
 	}
 }
@@ -172,7 +201,8 @@ pub struct ArcPolyGenInput {
 	n: i32,
 	r: f32,
 	offset_noise: f32,
-	s_noise: f32,
+	bend_max: f32,
+	bend_min: f32,
 	shrink: f32,
 }
 
@@ -183,8 +213,9 @@ impl Default for ArcPolyGenInput {
 			n: 5,
 			r: 200.0,
 			offset_noise: 30.0,
-			s_noise: 30.0,
-			shrink: 0.0,
+			bend_max: 0.3,
+			bend_min: 0.2,
+			shrink: 30.0,
 		}
 	}
 }
