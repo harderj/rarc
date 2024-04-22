@@ -70,24 +70,31 @@ impl Arc {
 		f32::atan2(cb.y, cb.x)
 	}
 
-	fn shrink(&mut self, amount: f32, mut previous: Arc, mut next: Arc) {
-		previous.shrink_naive(amount);
-		self.shrink_naive(amount);
-		next.shrink_naive(amount);
-		let previous_circle = FloatVec2 {
-			v: self.a,
+	fn adjust_neighbors(&mut self, previous: Arc, next: Arc) {
+		let self_circle = FloatVec2 {
+			v: self.center(),
 			f: self.radius(),
 		};
-		let self_circle = FloatVec2 {
-			v: previous.a,
+		let previous_circle = FloatVec2 {
+			v: previous.center(),
 			f: previous.radius(),
 		};
-		let cols = two_circle_collision(previous_circle, self_circle);
+		let next_circle = FloatVec2 {
+			v: next.center(),
+			f: next.radius(),
+		};
+		let cols_previous = two_circle_collision(previous_circle, self_circle);
+		let cols_next = two_circle_collision(self_circle, next_circle);
 		// println!("previous: {}, self: {}", previous_circle, self_circle);
-		if cols.len() > 1 { self.a = cols[1]; }
+		if cols_previous.len() > 1 {
+			self.a = cols_previous[0];
+		}
+		if cols_next.len() > 1 {
+			self.b = cols_next[0];
+		}
 	}
 
-	fn shrink_naive(&mut self, amount: f32) {
+	fn shrink(&mut self, amount: f32) {
 		let r = self.radius();
 		let c = self.center();
 		let ang_a = self.angle_a();
@@ -108,7 +115,8 @@ impl Arc {
 		);
 		gizmos.arc_2d(
 			Vec2::from_array(self.center().into()),
-			self.outward().angle_between(Vec2::Y) + (self.bend < 0.0).then_some(PI).unwrap_or(0.0),
+			self.outward().angle_between(Vec2::Y)
+				+ (self.bend < 0.0).then_some(PI).unwrap_or(0.0),
 			self.angle(),
 			self.radius(),
 			color,
@@ -145,15 +153,15 @@ impl ArcPoly {
 	pub fn shrunk(&self) -> Vec<ArcPoly> {
 		let mut arcs = self.original.clone();
 		let n = arcs.len();
-		// println!("n: {}", n);
-		let mut i: usize = 0;
+
 		for arc in arcs.iter_mut() {
-			arc.shrink(
-				self.shrink,
-				self.original[(n + i - 1) % n].clone(),
-				self.original[(i + 1) % n].clone(),
-			);
-			i += 1;
+			arc.shrink(self.shrink);
+		}
+
+		for i in 0..arcs.len() {
+			let previous = arcs[(n + i - 1) % n].clone();
+			let next = arcs[(i + 1) % n].clone();
+			arcs[i].adjust_neighbors(previous, next);
 		}
 		Vec::from([ArcPoly {
 			original: arcs,
