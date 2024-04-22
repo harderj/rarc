@@ -38,5 +38,5 @@ fn update(
 		let borrowed: &mut ArcPoly = single.borrow_mut();
 		*borrowed = ArcPoly::from_gen_input(&gen_input);
 	}
-	arc_poly.single().draw(&mut gizmos);
+	arc_poly.single().draw(&mut gizmos, false);
 }
