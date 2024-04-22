@@ -51,8 +51,8 @@ pub fn two_circle_collision(a: Circle, b: Circle) -> Vec<Vec2> {
 	} else {
 		let alpha = (a.f.powi(2) - b.f.powi(2) + d.powi(2)) / (2.0 * d);
 		let h = (a.f.powi(2) - alpha.powi(2)).sqrt();
-		let v2 = a.v - alpha * (b.v - a.v) / d;
-		let mut v3 = Mat2::IDENTITY.transpose() * (h * (b.v - a.v) / d);
+		let v2 = a.v + alpha * (b.v - a.v) / d;
+		let mut v3 = Mat2::from_cols(Vec2::Y, Vec2::X) * (h * (b.v - a.v) / d);
 		v3.y *= -1.0;
 		Vec::from([v2 + v3, v2 - v3])
 	}
