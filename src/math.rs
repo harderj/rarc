@@ -39,8 +39,8 @@ pub struct FloatVec2 {
 	pub v: Vec2,
 }
 
-type Collision = FloatVec2;
-type Circle = FloatVec2;
+pub type Collision = FloatVec2;
+pub type Circle = FloatVec2;
 
 pub fn two_circle_collision(a: Circle, b: Circle) -> Vec<Vec2> {
 	let d = (a.v - b.v).length();

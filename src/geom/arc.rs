@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use crate::math::{
-	circle_center_from_3_points, two_circle_collision, FloatVec2,
+	circle_center_from_3_points, two_circle_collision, Circle, FloatVec2
 };
 use bevy::{
 	ecs::{component::Component, system::Resource},
@@ -70,27 +70,33 @@ impl Arc {
 		f32::atan2(cb.y, cb.x)
 	}
 
-	fn adjust_neighbors(&mut self, previous: Arc, next: Arc) {
-		let self_circle = FloatVec2 {
+	fn circle(&self) -> Circle {
+		FloatVec2 {
 			v: self.center(),
 			f: self.radius(),
-		};
-		let previous_circle = FloatVec2 {
-			v: previous.center(),
-			f: previous.radius(),
-		};
-		let next_circle = FloatVec2 {
-			v: next.center(),
-			f: next.radius(),
-		};
-		let cols_previous = two_circle_collision(previous_circle, self_circle);
-		let cols_next = two_circle_collision(self_circle, next_circle);
-		// println!("previous: {}, self: {}", previous_circle, self_circle);
-		if cols_previous.len() > 1 {
-			self.a = cols_previous[0];
 		}
+	}
+
+	fn collision_idx(&self, other: Arc) -> Option<usize> {
+		const TOLERANCE: f32 = 0.001;
+		let cols = two_circle_collision(self.circle(), other.circle());
+		if cols.len() < 2 { None } else {
+			let b_dist_0 = (cols[0] - self.b).length();
+			let b_dist_1 = (cols[1] - self.b).length();
+			if b_dist_0 < TOLERANCE { Some(0) }
+			else if b_dist_1 < TOLERANCE { Some(1) }
+			else { None }
+		}
+	}
+
+	fn adjust_b(&mut self, next: Arc, col_idx: usize) -> Option<Vec2> {
+		let cols_next = two_circle_collision(self.circle(), next.circle());
 		if cols_next.len() > 1 {
-			self.b = cols_next[0];
+			let col = cols_next[col_idx];
+			self.b = col;
+			Some(col)
+		} else {
+			None
 		}
 	}
 
@@ -107,11 +113,11 @@ impl Arc {
 	}
 
 	pub fn draw(&self, gizmos: &mut Gizmos, color: Color) {
-		gizmos.circle_2d(Vec2::from_array(self.a.into()), 2.0, Color::GRAY);
+		gizmos.circle_2d(Vec2::from_array(self.a.into()), 2.0, Color::BLACK);
 		gizmos.circle_2d(
 			Vec2::from_array(self.b.into()),
 			4.0,
-			Color::DARK_GRAY,
+			Color::GRAY,
 		);
 		gizmos.arc_2d(
 			Vec2::from_array(self.center().into()),
@@ -127,7 +133,7 @@ impl Arc {
 #[derive(Component, Reflect, Default, Clone)]
 pub struct ArcPoly {
 	pub original: Vec<Arc>,
-	pub shrink: f32,
+	pub shrink: f32
 }
 
 impl ArcPoly {
@@ -150,21 +156,40 @@ impl ArcPoly {
 		}
 	}
 
-	pub fn shrunk(&self) -> Vec<ArcPoly> {
-		let mut arcs = self.original.clone();
-		let n = arcs.len();
+	pub fn collision_indices(&self) -> Vec<Option<usize>> {
+		let n = self.original.len();
+		let mut v = Vec::default();
+		for i in 0..self.original.len() {
+			let next = self.original[(i + 1) % n].clone();
+			v.push(self.original[i].collision_idx(next));
+		}
+		v
+	}
 
-		for arc in arcs.iter_mut() {
+	pub fn shrunk(&self) -> Vec<ArcPoly> {
+		let n = self.original.len();
+		let col_idxs = self.collision_indices();
+
+		let mut naive_arcs = self.original.clone();
+
+		for arc in naive_arcs.iter_mut() {
 			arc.shrink(self.shrink);
 		}
 
-		for i in 0..arcs.len() {
-			let previous = arcs[(n + i - 1) % n].clone();
-			let next = arcs[(i + 1) % n].clone();
-			arcs[i].adjust_neighbors(previous, next);
+		let mut output_arcs = naive_arcs.clone();
+
+		for i in 0..n {
+			if col_idxs[i].is_some() {
+				// println!("{}", i);
+				let j = (i + 1) % n;
+				let col = output_arcs[i].adjust_b(
+					naive_arcs[j].clone(), col_idxs[i].unwrap()
+				);
+				if col.is_some() { output_arcs[j].a = col.unwrap() };
+			}
 		}
 		Vec::from([ArcPoly {
-			original: arcs,
+			original: output_arcs,
 			shrink: 0.0,
 		}])
 	}
