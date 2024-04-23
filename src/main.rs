@@ -10,7 +10,7 @@ use bevy::{
 	DefaultPlugins
 };
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
-use rarc::geom::arc::{Arc, ArcPoly, ArcPolyGenInput};
+use rarc::geom::{arc::Arc, arc_poly::{ArcPoly, ArcPolyGenInput}};
 
 fn main() {
 	App::new()
