@@ -4,9 +4,10 @@ use bevy::{ecs::{component::Component, system::Resource}, gizmos::gizmos::Gizmos
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use rand_distr::{Distribution, UnitDisc};
 
+use crate::math::{Collision, FloatVec2};
+use crate::geom::arc_poly::CollisionType::Opposite;
+
 use super::arc::Arc;
-
-
 
 #[derive(Component, Reflect, Default, Clone)]
 pub struct ArcPoly {
@@ -14,20 +15,22 @@ pub struct ArcPoly {
 	pub shrink: f32
 }
 
+pub enum CollisionType { Opposite, Neighbors, Triangle }
+
 impl ArcPoly {
-	pub fn draw(&self, gizmos: &mut Gizmos, already_shrunk: bool) {
+	pub fn draw(&self, gizmos: &mut Gizmos, already_shrunken: bool) {
 		for arc in &self.original {
 			arc.draw(
 				gizmos,
-				if already_shrunk {
+				if already_shrunken {
 					Color::BLUE
 				} else {
 					Color::GREEN
 				},
 			); // TODO: is this right?
 		}
-		if !already_shrunk {
-			let shr = self.shrunk();
+		if !already_shrunken {
+			let shr = self.shrunken(gizmos);
 			for arc_poly in shr {
 				arc_poly.draw(gizmos, true); // true important! otherwise stack overflow
 			}
@@ -44,32 +47,68 @@ impl ArcPoly {
 		v
 	}
 
-	pub fn shrunk(&self) -> Vec<ArcPoly> {
+
+  pub fn future_collisions(&self) -> Vec<(CollisionType, Collision)> {
+    let mut collisions = self.opposite_collisions();
+    collisions.sort_by(|(_, c1), (_, c2)| c1.f.total_cmp(&c2.f));
+    collisions
+  }
+
+  pub fn opposite_collisions(&self) -> Vec<(CollisionType, Collision)> {
+    let mut vec: Vec<(CollisionType, Collision)> = Vec::default();
+    let n = self.original.len();
+    for i in 0..n {
+      let a = &self.original[i];
+      let ac = a.center();
+      let ar = a.radius();
+      for j in 2..n-1 {
+        let b = &self.original[(i + j) % n];
+        let bc = b.center();
+        let br = b.radius();
+        let ab = bc - ac;
+        let l = ab.length();
+        vec.push((Opposite, FloatVec2 {
+          v: ac + (0.5 * (l + ar - br) * (ab.normalize())),
+          f: 0.5 * (l - ar - br)
+        }));
+      }
+    }
+    vec
+  }
+
+  pub fn shrunken(&self, gizmos: &mut Gizmos) -> Vec<ArcPoly> {
+    let collisions = self.future_collisions();
+    for (_, c) in collisions {
+      gizmos.circle_2d(c.v, 2.0, Color::WHITE);
+    } 
+		Vec::from([self.shrunken_naive()])
+  }
+
+	pub fn shrunken_naive(&self) -> ArcPoly {
 		let n = self.original.len();
 		let col_idxs = self.collision_indices();
 
 		let mut naive_arcs = self.original.clone();
 
 		for arc in naive_arcs.iter_mut() {
-			arc.shrink(self.shrink);
+			arc.shrink_keeping_center(self.shrink);
 		}
 
 		let mut output_arcs = naive_arcs.clone();
 
 		for i in 0..n {
 			if col_idxs[i].is_some() {
-				// println!("{}", i);
 				let j = (i + 1) % n;
 				let col = output_arcs[i].adjust_b(
 					naive_arcs[j].clone(), col_idxs[i].unwrap()
 				);
-				if col.is_some() { output_arcs[j].a = col.unwrap() };
+				if col.is_some() { output_arcs[j].set_a_keeping_center(col.unwrap()) };
 			}
 		}
-		Vec::from([ArcPoly {
+    ArcPoly {
 			original: output_arcs,
-			shrink: 0.0,
-		}])
+			shrink: 0.0
+		}
 	}
 
 	pub fn from_gen_input(gen_input: &ArcPolyGenInput) -> Self {
@@ -124,8 +163,8 @@ impl Default for ArcPolyGenInput {
 			n: 5,
 			r: 200.0,
 			offset_noise: 30.0,
-			bend_max: 0.3,
-			bend_min: 0.2,
+			bend_max: 0.5,
+			bend_min: 0.4,
 			shrink: 30.0,
 		}
 	}

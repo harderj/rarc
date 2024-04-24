@@ -1,4 +1,3 @@
-
 use std::borrow::BorrowMut;
 
 use bevy::{
@@ -7,10 +6,13 @@ use bevy::{
 	ecs::system::{Commands, Query},
 	gizmos::gizmos::Gizmos,
 	prelude::*,
-	DefaultPlugins
+	DefaultPlugins,
 };
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
-use rarc::geom::{arc::Arc, arc_poly::{ArcPoly, ArcPolyGenInput}};
+use rarc::geom::{
+	arc::Arc,
+	arc_poly::{ArcPoly, ArcPolyGenInput},
+};
 
 fn main() {
 	App::new()
@@ -31,9 +33,9 @@ fn setup(mut commands: Commands, gen_input: ResMut<ArcPolyGenInput>) {
 fn update(
 	mut gizmos: Gizmos,
 	gen_input: ResMut<ArcPolyGenInput>,
-	mut arc_poly: Query<&mut ArcPoly>
+	mut arc_poly: Query<&mut ArcPoly>,
 ) {
-	if gen_input.is_changed(){
+	if gen_input.is_changed() {
 		// TODO: this is probably not the right way to do it
 		let mut single = arc_poly.single_mut();
 		let borrowed: &mut ArcPoly = single.borrow_mut();

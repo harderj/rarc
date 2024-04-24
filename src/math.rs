@@ -1,7 +1,13 @@
 extern crate derive_more;
-use derive_more::{Display, Add, Sub};
+use derive_more::{Add, Display, Sub};
 
-use bevy::math::{Mat2, Mat3, Vec2, Vec3};
+use std::f32::consts::PI;
+
+use bevy::{
+	ecs::component::Component,
+	math::{Mat2, Mat3, Vec2, Vec3},
+	reflect::Reflect,
+};
 
 pub fn second_deg_eq(a: f32, b: f32, c: f32) -> Vec<f32> {
 	let d = b.powi(2) - 4.0 * a * c;
@@ -17,11 +23,8 @@ pub fn second_deg_eq(a: f32, b: f32, c: f32) -> Vec<f32> {
 }
 
 pub fn circle_center_from_3_points(p1: Vec2, p2: Vec2, p3: Vec2) -> Vec2 {
-	let c1 = Vec3::new(
-		p1.length_squared(),
-		p2.length_squared(),
-		p3.length_squared(),
-	);
+	let c1 =
+		Vec3::new(p1.length_squared(), p2.length_squared(), p3.length_squared());
 	let c2 = Vec3::new(p1.x, p2.x, p3.x);
 	let c3 = Vec3::new(p1.y, p2.y, p3.y);
 
@@ -32,7 +35,7 @@ pub fn circle_center_from_3_points(p1: Vec2, p2: Vec2, p3: Vec2) -> Vec2 {
 	Vec2::new(m2.determinant(), -m3.determinant()) * 0.5 / m1.determinant()
 }
 
-#[derive(Clone, Copy, Display, Add, Sub)]
+#[derive(Clone, Component, Copy, Display, Add, Reflect, Sub)]
 #[display(fmt = "({}, {})", f, v)]
 pub struct FloatVec2 {
 	pub f: f32,
@@ -42,7 +45,11 @@ pub struct FloatVec2 {
 pub type Collision = FloatVec2;
 pub type Circle = FloatVec2;
 
-pub fn two_circle_collision(a: Circle, b: Circle) -> Vec<Vec2> {
+pub fn angle_counter_clockwise(a: Vec2, b: Vec2) -> f32 {
+	(Mat2::from_cols(a, b).determinant().atan2(a.dot(b)) + 2.0 * PI) % (2.0 * PI)
+}
+
+pub fn two_circle_collision(a: &Circle, b: &Circle) -> Vec<Vec2> {
 	let d = (a.v - b.v).length();
 	if d > a.f + b.f || d < f32::abs(a.f - b.f) || d == 0.0 {
 		Vec::default()
@@ -59,16 +66,16 @@ pub fn two_circle_collision(a: Circle, b: Circle) -> Vec<Vec2> {
 }
 
 pub fn three_circle_collision(
-	a: Circle,
-	b: Circle,
-	c: Circle,
+	a: &Circle,
+	b: &Circle,
+	c: &Circle,
 ) -> Option<Collision> {
-	let a_ = a - c;
-	let b_ = b - c;
+	let a_ = *a - *c;
+	let b_ = *b - *c;
 	let pcol = three_circle_collision_0(a_, b_);
 	match pcol {
 		None => None,
-		Some(col) => Some(col + c),
+		Some(col) => Some(FloatVec2 { f: col.f - c.f, v: col.v + c.v }),
 	}
 }
 
@@ -86,11 +93,11 @@ fn three_circle_collision_0(a: Circle, b: Circle) -> Option<Collision> {
 	let eq_a = delta_x.powi(2) + delta_y.powi(2) - 1.0;
 	let eq_b = 2.0 * (delta_x * epsilon_x + delta_y * epsilon_y);
 	let eq_c = epsilon_x.powi(2) + epsilon_y.powi(2);
-	let pot_t = second_deg_eq(eq_a, eq_b, eq_c);
-	let t = match pot_t.len() {
+	let pot_ts = second_deg_eq(eq_a, eq_b, eq_c);
+	let pot_t = match pot_ts.len() {
 		0 => None,
 		1 => {
-			let t = *pot_t.first().unwrap();
+			let t = *pot_ts.first().unwrap();
 			if t > 0.0 {
 				Some(t)
 			} else {
@@ -98,9 +105,9 @@ fn three_circle_collision_0(a: Circle, b: Circle) -> Option<Collision> {
 			}
 		}
 		2 => {
-			let mut t: f32 = *pot_t.first().unwrap();
+			let mut t: f32 = *pot_ts.first().unwrap();
 			if t < 0.0 {
-				t = *pot_t.get(1).unwrap();
+				t = *pot_ts.get(1).unwrap();
 			}
 			if t > 0.0 {
 				Some(t)
@@ -110,15 +117,11 @@ fn three_circle_collision_0(a: Circle, b: Circle) -> Option<Collision> {
 		}
 		_ => panic!("Not possible."),
 	};
-	if t.is_none() {
-		None
-	} else {
-		Some(Collision {
-			f: t.unwrap(),
-			v: Vec2::new(
-				delta_x * t.unwrap() + epsilon_x,
-				delta_y * t.unwrap() + epsilon_x,
-			),
-		})
+	match pot_t {
+		None => None,
+		Some(t) => Some(Collision {
+			f: t,
+			v: Vec2::new(delta_x * t + epsilon_x, delta_y * t + epsilon_y),
+		}),
 	}
 }

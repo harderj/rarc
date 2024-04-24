@@ -1,17 +1,13 @@
 use std::f32::consts::PI;
 
 use crate::math::{
-	circle_center_from_3_points, two_circle_collision, Circle, FloatVec2
+	angle_counter_clockwise, circle_center_from_3_points, two_circle_collision,
+	Circle, FloatVec2,
 };
 use bevy::{
-	ecs::{component::Component, system::Resource},
-	gizmos::gizmos::Gizmos,
-	math::{Mat2, Vec2},
-	reflect::{List, Reflect},
-	render::color::Color,
+	ecs::component::Component, gizmos::gizmos::Gizmos, math::Vec2,
+	reflect::Reflect, render::color::Color,
 };
-use rand::{rngs::StdRng, Rng, SeedableRng};
-use rand_distr::{Distribution, UnitDisc};
 
 #[derive(Component, Reflect, Clone)]
 pub struct Arc {
@@ -50,14 +46,45 @@ impl Arc {
 	}
 
 	pub fn angle(&self) -> f32 {
-		let mut r = Mat2::from_cols(self.ca(), self.cb())
-			.determinant()
-			.atan2(self.ca().dot(self.cb()))
-			* f32::signum(self.bend);
-		if r < 0.0 {
-			r += 2.0 * PI
+		if self.bend > 0.0 {
+			angle_counter_clockwise(self.ca(), self.cb())
+		} else {
+			angle_counter_clockwise(self.cb(), self.ca())
 		}
-		r
+	}
+
+	pub fn set_a_keeping_center(&mut self, new_a: Vec2) {
+		let c = self.center();
+		let ca = new_a - c;
+		assert!(ca.length() - self.radius() < 0.001);
+		let alpha = if self.bend > 0.0 {
+			angle_counter_clockwise(new_a - c, self.cb()) / 2.0
+		} else {
+			angle_counter_clockwise(self.cb(), new_a - c) / 2.0
+		};
+		self.a = new_a;
+		self.bend = (1.0 - f32::cos(alpha)) * f32::signum(self.bend);
+		assert!((self.center() - c).length() < 0.001);
+	}
+
+	pub fn set_b_keeping_center(&mut self, new_b: Vec2) {
+		let c = self.center();
+		let cb = new_b - c;
+		assert!(cb.length() - self.radius() < 0.001);
+		let alpha = if self.bend > 0.0 {
+			angle_counter_clockwise(self.ca(), cb) / 2.0
+		} else {
+			angle_counter_clockwise(cb, self.ca()) / 2.0
+		};
+		self.b = new_b;
+		self.bend = (1.0 - f32::cos(alpha)) * f32::signum(self.bend);
+		println!("{}", (self.center() - c).length());
+		assert!((self.center() - c).length() < 0.001);
+		// let alpha = angle_counter_clockwise(self.ca(), new_b - c) / 2.0;
+		// let r = self.radius();
+		// let ca = self.a - c;
+		// let cb = self.b - c;
+		// let alpha = (2.0 * PI + (f32::atan2(cb.y, cb.x) - f32::atan2(ca.y, ca.x))) % (2.0 * PI);
 	}
 
 	pub fn angle_a(&self) -> f32 {
@@ -71,36 +98,39 @@ impl Arc {
 	}
 
 	fn circle(&self) -> Circle {
-		FloatVec2 {
-			v: self.center(),
-			f: self.radius(),
-		}
+		FloatVec2 { v: self.center(), f: self.radius() }
 	}
 
 	pub fn collision_idx(&self, other: Arc) -> Option<usize> {
 		const TOLERANCE: f32 = 0.001;
-		let cols = two_circle_collision(self.circle(), other.circle());
-		if cols.len() < 2 { None } else {
+		let cols = two_circle_collision(&self.circle(), &other.circle());
+		if cols.len() < 2 {
+			None
+		} else {
 			let b_dist_0 = (cols[0] - self.b).length();
 			let b_dist_1 = (cols[1] - self.b).length();
-			if b_dist_0 < TOLERANCE { Some(0) }
-			else if b_dist_1 < TOLERANCE { Some(1) }
-			else { None }
+			if b_dist_0 < TOLERANCE {
+				Some(0)
+			} else if b_dist_1 < TOLERANCE {
+				Some(1)
+			} else {
+				None
+			}
 		}
 	}
 
 	pub fn adjust_b(&mut self, next: Arc, col_idx: usize) -> Option<Vec2> {
-		let cols_next = two_circle_collision(self.circle(), next.circle());
+		let cols_next = two_circle_collision(&self.circle(), &next.circle());
 		if cols_next.len() > 1 {
 			let col = cols_next[col_idx];
-			self.b = col;
+			self.set_b_keeping_center(col);
 			Some(col)
 		} else {
 			None
 		}
 	}
 
-	pub fn shrink(&mut self, amount: f32) {
+	pub fn shrink_keeping_center(&mut self, amount: f32) {
 		let r = self.radius();
 		let c = self.center();
 		let ang_a = self.angle_a();
@@ -114,11 +144,7 @@ impl Arc {
 
 	pub fn draw(&self, gizmos: &mut Gizmos, color: Color) {
 		gizmos.circle_2d(Vec2::from_array(self.a.into()), 2.0, Color::BLACK);
-		gizmos.circle_2d(
-			Vec2::from_array(self.b.into()),
-			4.0,
-			Color::GRAY,
-		);
+		gizmos.circle_2d(Vec2::from_array(self.b.into()), 4.0, Color::GRAY);
 		gizmos.arc_2d(
 			Vec2::from_array(self.center().into()),
 			self.outward().angle_between(Vec2::Y)
