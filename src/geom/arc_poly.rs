@@ -1,32 +1,38 @@
 use std::f32::consts::PI;
 
-use bevy::{ecs::{component::Component, system::Resource}, gizmos::gizmos::Gizmos, math::Vec2, reflect::Reflect, render::color::Color};
+use bevy::{
+	ecs::{component::Component, system::Resource},
+	gizmos::gizmos::Gizmos,
+	math::Vec2,
+	reflect::Reflect,
+	render::color::Color,
+};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use rand_distr::{Distribution, UnitDisc};
 
-use crate::math::{Collision, FloatVec2};
 use crate::geom::arc_poly::CollisionType::Opposite;
+use crate::math::{Collision, FloatVec2};
 
 use super::arc::Arc;
 
 #[derive(Component, Reflect, Default, Clone)]
 pub struct ArcPoly {
 	pub original: Vec<Arc>,
-	pub shrink: f32
+	pub shrink: f32,
 }
 
-pub enum CollisionType { Opposite, Neighbors, Triangle }
+pub enum CollisionType {
+	Opposite,
+	Neighbors,
+	Triangle,
+}
 
 impl ArcPoly {
 	pub fn draw(&self, gizmos: &mut Gizmos, already_shrunken: bool) {
 		for arc in &self.original {
 			arc.draw(
 				gizmos,
-				if already_shrunken {
-					Color::BLUE
-				} else {
-					Color::GREEN
-				},
+				if already_shrunken { Color::BLUE } else { Color::GREEN },
 			); // TODO: is this right?
 		}
 		if !already_shrunken {
@@ -37,52 +43,58 @@ impl ArcPoly {
 		}
 	}
 
-	pub fn collision_indices(&self) -> Vec<Option<usize>> {
+	pub fn collision_indices(&self) -> Vec<(Option<usize>, Option<usize>)> {
 		let n = self.original.len();
 		let mut v = Vec::default();
 		for i in 0..self.original.len() {
-			let next = self.original[(i + 1) % n].clone();
-			v.push(self.original[i].collision_idx(next));
+			let prev = self.original[(n + i - 1) % n].clone();
+			let next = self.original[(n + i + 1) % n].clone();
+			v.push((
+				prev.collision_idx(self.original[i]),
+				self.original[i].collision_idx(next),
+			));
 		}
 		v
 	}
 
+	pub fn future_collisions(&self) -> Vec<(CollisionType, Collision)> {
+		let mut collisions = self.opposite_collisions();
+		collisions.sort_by(|(_, c1), (_, c2)| c1.f.total_cmp(&c2.f));
+		collisions
+	}
 
-  pub fn future_collisions(&self) -> Vec<(CollisionType, Collision)> {
-    let mut collisions = self.opposite_collisions();
-    collisions.sort_by(|(_, c1), (_, c2)| c1.f.total_cmp(&c2.f));
-    collisions
-  }
+	pub fn opposite_collisions(&self) -> Vec<(CollisionType, Collision)> {
+		let mut vec: Vec<(CollisionType, Collision)> = vec![];
+		let n = self.original.len();
+		for i in 0..n {
+			let a = &self.original[i];
+			let ac = a.center();
+			let ar = a.radius();
+			for j in 2..n - 1 {
+				let b = &self.original[(i + j) % n];
+				let bc = b.center();
+				let br = b.radius();
+				let ab = bc - ac;
+				let l = ab.length();
+				vec.push((
+					Opposite,
+					FloatVec2 {
+						v: ac + (0.5 * (l + ar - br) * (ab.normalize())),
+						f: 0.5 * (l - ar - br),
+					},
+				));
+			}
+		}
+		vec
+	}
 
-  pub fn opposite_collisions(&self) -> Vec<(CollisionType, Collision)> {
-    let mut vec: Vec<(CollisionType, Collision)> = Vec::default();
-    let n = self.original.len();
-    for i in 0..n {
-      let a = &self.original[i];
-      let ac = a.center();
-      let ar = a.radius();
-      for j in 2..n-1 {
-        let b = &self.original[(i + j) % n];
-        let bc = b.center();
-        let br = b.radius();
-        let ab = bc - ac;
-        let l = ab.length();
-        vec.push((Opposite, FloatVec2 {
-          v: ac + (0.5 * (l + ar - br) * (ab.normalize())),
-          f: 0.5 * (l - ar - br)
-        }));
-      }
-    }
-    vec
-  }
-
-  pub fn shrunken(&self, gizmos: &mut Gizmos) -> Vec<ArcPoly> {
-    let collisions = self.future_collisions();
-    for (_, c) in collisions {
-      gizmos.circle_2d(c.v, 2.0, Color::WHITE);
-    } 
+	pub fn shrunken(&self, gizmos: &mut Gizmos) -> Vec<ArcPoly> {
+		let collisions = self.future_collisions();
+		for (_, c) in collisions {
+			gizmos.circle_2d(c.v, 2.0, Color::WHITE);
+		}
 		Vec::from([self.shrunken_naive()])
-  }
+	}
 
 	pub fn shrunken_naive(&self) -> ArcPoly {
 		let n = self.original.len();
@@ -97,18 +109,15 @@ impl ArcPoly {
 		let mut output_arcs = naive_arcs.clone();
 
 		for i in 0..n {
-			if col_idxs[i].is_some() {
-				let j = (i + 1) % n;
-				let col = output_arcs[i].adjust_b(
-					naive_arcs[j].clone(), col_idxs[i].unwrap()
-				);
-				if col.is_some() { output_arcs[j].set_a_keeping_center(col.unwrap()) };
-			}
+			let i_p = (n + i - 1) % n;
+			let i_n = (n + i + 1) % n;
+			output_arcs[i].adjust_to_neighbors(
+				col_idxs[i],
+				&naive_arcs[i_p],
+				&naive_arcs[i_n],
+			);
 		}
-    ArcPoly {
-			original: output_arcs,
-			shrink: 0.0
-		}
+		ArcPoly { original: output_arcs, shrink: 0.0 }
 	}
 
 	pub fn from_gen_input(gen_input: &ArcPolyGenInput) -> Self {
@@ -123,8 +132,8 @@ impl ArcPoly {
 				Vec2::new(
 					f32::cos(2.0 * PI * (i as f32) / (gen_input.n as f32)),
 					f32::sin(2.0 * PI * (i as f32) / (gen_input.n as f32)),
-				) * gen_input.r + Vec2::from_array(UnitDisc.sample(&mut rng))
-					* gen_input.offset_noise
+				) * gen_input.r
+					+ Vec2::from_array(UnitDisc.sample(&mut rng)) * gen_input.offset_noise
 			};
 			let absolute_bend = rng.gen_range(
 				gen_input.bend_min
@@ -133,11 +142,7 @@ impl ArcPoly {
 			res.original.push(Arc {
 				a: previous,
 				b: next,
-				bend: if rng.gen_bool(0.5) {
-					absolute_bend
-				} else {
-					-absolute_bend
-				},
+				bend: if rng.gen_bool(0.5) { absolute_bend } else { -absolute_bend },
 			});
 			previous = next;
 		}

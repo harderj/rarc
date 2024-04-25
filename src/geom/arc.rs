@@ -9,7 +9,7 @@ use bevy::{
 	reflect::Reflect, render::color::Color,
 };
 
-#[derive(Component, Reflect, Clone)]
+#[derive(Clone, Component, Copy, Reflect)]
 pub struct Arc {
 	pub a: Vec2,
 	pub b: Vec2,
@@ -46,45 +46,40 @@ impl Arc {
 	}
 
 	pub fn angle(&self) -> f32 {
-		if self.bend > 0.0 {
-			angle_counter_clockwise(self.ca(), self.cb())
+		Arc::angle_gen(self.ca(), self.cb(), self.bend)
+	}
+
+	pub fn angle_gen(ca: Vec2, cb: Vec2, bend: f32) -> f32 {
+		if bend > 0.0 {
+			angle_counter_clockwise(ca, cb)
 		} else {
-			angle_counter_clockwise(self.cb(), self.ca())
+			angle_counter_clockwise(cb, ca)
 		}
+	}
+
+	pub fn ab_average(&self) -> Vec2 {
+		0.5 * (self.a + self.b)
 	}
 
 	pub fn set_a_keeping_center(&mut self, new_a: Vec2) {
 		let c = self.center();
-		let ca = new_a - c;
-		assert!(ca.length() - self.radius() < 0.001);
-		let alpha = if self.bend > 0.0 {
-			angle_counter_clockwise(new_a - c, self.cb()) / 2.0
-		} else {
-			angle_counter_clockwise(self.cb(), new_a - c) / 2.0
-		};
+		let alpha = 0.5 * Arc::angle_gen(new_a - c, self.cb(), self.bend);
+		let new_bend = 2.0 * (1.0 - f32::cos(alpha)) * self.radius()
+			/ (new_a - self.b).length()
+			* f32::signum(self.bend);
 		self.a = new_a;
-		self.bend = (1.0 - f32::cos(alpha)) * f32::signum(self.bend);
-		assert!((self.center() - c).length() < 0.001);
+		self.bend = new_bend;
+		// println!("{}", (self.center() - c).length());
 	}
 
-	pub fn set_b_keeping_center(&mut self, new_b: Vec2) {
+	pub fn set_b_keeping_center(&mut self, new_b: Vec2) -> () {
 		let c = self.center();
-		let cb = new_b - c;
-		assert!(cb.length() - self.radius() < 0.001);
-		let alpha = if self.bend > 0.0 {
-			angle_counter_clockwise(self.ca(), cb) / 2.0
-		} else {
-			angle_counter_clockwise(cb, self.ca()) / 2.0
-		};
+		let alpha = 0.5 * Arc::angle_gen(self.ca(), new_b - c, self.bend);
+		let new_bend = 2.0 * (1.0 - f32::cos(alpha)) * self.radius()
+			/ (self.a - new_b).length()
+			* f32::signum(self.bend);
 		self.b = new_b;
-		self.bend = (1.0 - f32::cos(alpha)) * f32::signum(self.bend);
-		println!("{}", (self.center() - c).length());
-		assert!((self.center() - c).length() < 0.001);
-		// let alpha = angle_counter_clockwise(self.ca(), new_b - c) / 2.0;
-		// let r = self.radius();
-		// let ca = self.a - c;
-		// let cb = self.b - c;
-		// let alpha = (2.0 * PI + (f32::atan2(cb.y, cb.x) - f32::atan2(ca.y, ca.x))) % (2.0 * PI);
+		self.bend = new_bend;
 	}
 
 	pub fn angle_a(&self) -> f32 {
@@ -119,15 +114,28 @@ impl Arc {
 		}
 	}
 
-	pub fn adjust_b(&mut self, next: Arc, col_idx: usize) -> Option<Vec2> {
+	pub fn adjust_to_neighbors(
+		&mut self,
+		col_idx: (Option<usize>, Option<usize>),
+		prev: &Arc,
+		next: &Arc,
+	) {
+		let cols_prev = two_circle_collision(&prev.circle(), &self.circle());
 		let cols_next = two_circle_collision(&self.circle(), &next.circle());
-		if cols_next.len() > 1 {
-			let col = cols_next[col_idx];
-			self.set_b_keeping_center(col);
-			Some(col)
-		} else {
-			None
-		}
+		match cols_prev[..] {
+			[c] => self.set_a_keeping_center(c),
+			[_, _] => {
+				col_idx.0.map(|i| self.set_a_keeping_center(cols_prev[i]));
+			}
+			_ => (),
+		};
+		match cols_next[..] {
+			[c] => self.set_b_keeping_center(c),
+			[_, _] => {
+				col_idx.1.map(|i| self.set_b_keeping_center(cols_next[i]));
+			}
+			_ => (),
+		};
 	}
 
 	pub fn shrink_keeping_center(&mut self, amount: f32) {

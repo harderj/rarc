@@ -9,21 +9,10 @@ use bevy::{
 use bevy_inspector_egui::quick::{
 	ResourceInspectorPlugin, WorldInspectorPlugin,
 };
-use rarc::math::{
-	three_circle_collision, two_circle_collision, Circle, FloatVec2,
+use rarc::{
+	math::{three_circle_collision, two_circle_collision, Circle, FloatVec2},
+	util::{gizmo_circle, TimeResource},
 };
-
-#[derive(Reflect, Resource)]
-struct TimeResource {
-	time: f32,
-	speed: f32,
-}
-
-impl Default for TimeResource {
-	fn default() -> Self {
-		Self { time: Default::default(), speed: 10.0 }
-	}
-}
 
 fn main() {
 	App::new()
@@ -46,10 +35,6 @@ fn setup(mut commands: Commands) {
 	] {
 		commands.spawn(c);
 	}
-}
-
-fn gizmo_circle(gizmos: &mut Gizmos, circle: FloatVec2, color: Color) {
-	gizmos.circle_2d(circle.v, circle.f, color);
 }
 
 fn update(
