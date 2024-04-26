@@ -42,7 +42,6 @@ pub struct FloatVec2 {
 	pub v: Vec2,
 }
 
-pub type Collision = FloatVec2;
 pub type Circle = FloatVec2;
 
 pub fn angle_counter_clockwise(a: Vec2, b: Vec2) -> f32 {
@@ -69,7 +68,7 @@ pub fn three_circle_collision(
 	a: &Circle,
 	b: &Circle,
 	c: &Circle,
-) -> Option<Collision> {
+) -> Option<FloatVec2> {
 	let a_ = *a - *c;
 	let b_ = *b - *c;
 	let pcol = three_circle_collision_0(a_, b_);
@@ -79,7 +78,7 @@ pub fn three_circle_collision(
 	}
 }
 
-fn three_circle_collision_0(a: Circle, b: Circle) -> Option<Collision> {
+fn three_circle_collision_0(a: Circle, b: Circle) -> Option<FloatVec2> {
 	let m = Mat2::from_cols(a.v, b.v).transpose();
 	let alpha = 1.0 / (2.0 * m.determinant());
 	let beta_a = a.v.length_squared() - a.f.powi(2);
@@ -119,7 +118,7 @@ fn three_circle_collision_0(a: Circle, b: Circle) -> Option<Collision> {
 	};
 	match pot_t {
 		None => None,
-		Some(t) => Some(Collision {
+		Some(t) => Some(FloatVec2 {
 			f: t,
 			v: Vec2::new(delta_x * t + epsilon_x, delta_y * t + epsilon_y),
 		}),
