@@ -9,6 +9,7 @@ use bevy::{
 use bevy_inspector_egui::quick::{
 	ResourceInspectorPlugin, WorldInspectorPlugin,
 };
+
 use rarc::{
 	math::{three_circle_collision, two_circle_collision, Circle, FloatVec2},
 	util::{gizmo_circle, TimeResource},
@@ -29,13 +30,18 @@ fn main() {
 fn setup(mut commands: Commands) {
 	commands.spawn(Camera2dBundle::default());
 	for c in [
-		FloatVec2 { v: Vec2::new(-150.0, 100.0), f: 150.0 },
-		FloatVec2 { v: Vec2::new(250.0, 50.0), f: 200.0 },
-		FloatVec2 { v: Vec2::new(0.0, 0.0), f: 100.0 },
+		FloatVec2 { v: Vec2::new(0.0, 100.0), f: 150.0 },
+		FloatVec2 { v: Vec2::new(-100.0, -50.0), f: 70.0 },
+		FloatVec2 { v: Vec2::new(100.0, -50.0), f: 60.0 },
 	] {
 		commands.spawn(c);
 	}
 }
+
+const CIRCLE_COLORS: [Color; 4] =
+	[Color::RED, Color::ORANGE, Color::YELLOW, Color::YELLOW_GREEN];
+
+const COLLISION_COLORS: [Color; 2] = [Color::BLACK, Color::WHITE];
 
 fn update(
 	mut gizmos: Gizmos,
@@ -47,17 +53,20 @@ fn update(
 		f: time_resource.time * time_resource.speed,
 	};
 
-	for c in circles.iter() {
-		gizmo_circle(&mut gizmos, *c + t, Color::GRAY);
+	for (c, color) in circles.iter().zip(CIRCLE_COLORS) {
+		gizmo_circle(&mut gizmos, *c + t, color);
 	}
 
-	let mut two_collisions: Vec<Vec2> = Vec::default();
+	let mut two_collisions: Vec<(Vec2, Color)> = Vec::default();
 	for [c1, c2] in circles.iter_combinations() {
-		two_collisions.append(&mut two_circle_collision(&(*c1 + t), &(*c2 + t)));
+		let collisions = two_circle_collision(&(*c1 + t), &(*c2 + t));
+		let mut colored: Vec<(Vec2, Color)> =
+			collisions.into_iter().zip(COLLISION_COLORS).collect();
+		two_collisions.append(&mut colored);
 	}
 
-	for c in two_collisions {
-		gizmo_circle(&mut gizmos, FloatVec2 { v: c, f: 4.0 }, Color::ORANGE_RED)
+	for (center, color) in two_collisions {
+		gizmo_circle(&mut gizmos, FloatVec2 { v: center, f: 4.0 }, color)
 	}
 
 	let mut three_collisions: Vec<FloatVec2> = Vec::default();

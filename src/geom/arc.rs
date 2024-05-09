@@ -1,5 +1,8 @@
 use std::f32::consts::PI;
 
+extern crate derive_more;
+use derive_more::Display;
+
 use crate::math::{
 	angle_counter_clockwise, circle_center_from_3_points, two_circle_collision,
 	Circle, FloatVec2,
@@ -9,7 +12,8 @@ use bevy::{
 	reflect::Reflect, render::color::Color,
 };
 
-#[derive(Clone, Component, Copy, Reflect)]
+#[derive(Clone, Component, Copy, Display, Reflect)]
+#[display(fmt = "arc({}, {}, {})", a, b, bend)]
 pub struct Arc {
 	pub a: Vec2,
 	pub b: Vec2,
@@ -92,25 +96,23 @@ impl Arc {
 		f32::atan2(cb.y, cb.x)
 	}
 
-	fn circle(&self) -> Circle {
+	pub fn circle(&self) -> Circle {
 		FloatVec2 { v: self.center(), f: self.radius() }
+	}
+
+	pub fn circle_neg_r(&self) -> Circle {
+		FloatVec2 { v: self.center(), f: -self.radius() * f32::signum(self.bend) }
 	}
 
 	pub fn collision_idx(&self, other: Arc) -> Option<usize> {
 		const TOLERANCE: f32 = 0.001;
 		let cols = two_circle_collision(&self.circle(), &other.circle());
-		if cols.len() < 2 {
-			None
+		if self.bend < 0.0 && other.bend < 0.0 {
+			return Some(1);
+		} else if self.bend > 0.0 && other.bend > 0.0 {
+			return Some(0);
 		} else {
-			let b_dist_0 = (cols[0] - self.b).length();
-			let b_dist_1 = (cols[1] - self.b).length();
-			if b_dist_0 < TOLERANCE {
-				Some(0)
-			} else if b_dist_1 < TOLERANCE {
-				Some(1)
-			} else {
-				None
-			}
+			return None;
 		}
 	}
 
@@ -127,7 +129,7 @@ impl Arc {
 			[_, _] => {
 				col_idx.0.map(|i| self.set_a_keeping_center(cols_prev[i]));
 			}
-			_ => (),
+			_ => (), // panic maybe?
 		};
 		match cols_next[..] {
 			[c] => self.set_b_keeping_center(c),
