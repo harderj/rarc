@@ -73,7 +73,6 @@ impl Arc {
 			* f32::signum(self.bend);
 		self.a = new_a;
 		self.bend = new_bend;
-		// println!("{}", (self.center() - c).length());
 	}
 
 	pub fn set_b_keeping_center(&mut self, new_b: Vec2) -> () {
@@ -105,14 +104,12 @@ impl Arc {
 	}
 
 	pub fn collision_idx(&self, other: Arc) -> Option<usize> {
-		const TOLERANCE: f32 = 0.001;
-		let cols = two_circle_collision(&self.circle(), &other.circle());
 		if self.bend < 0.0 && other.bend < 0.0 {
 			return Some(1);
 		} else if self.bend > 0.0 && other.bend > 0.0 {
 			return Some(0);
 		} else {
-			return None;
+			todo!();
 		}
 	}
 
