@@ -9,16 +9,12 @@ use bevy::{
 	DefaultPlugins,
 };
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
-use rarc::geom::{
-	arc::Arc,
-	arc_poly::{ArcPoly, ArcPolyGenInput},
-};
+use rarc::geom::arc_poly::{ArcPoly, ArcPolyGenInput};
 
 fn main() {
 	App::new()
 		.init_resource::<ArcPolyGenInput>()
 		.add_plugins(DefaultPlugins)
-		.register_type::<Arc>()
 		.add_plugins(ResourceInspectorPlugin::<ArcPolyGenInput>::new())
 		.add_systems(Startup, setup)
 		.add_systems(Update, update)
@@ -33,13 +29,17 @@ fn setup(mut commands: Commands, gen_input: ResMut<ArcPolyGenInput>) {
 fn update(
 	mut gizmos: Gizmos,
 	gen_input: ResMut<ArcPolyGenInput>,
-	mut arc_poly: Query<&mut ArcPoly>,
+	mut arc_poly_query: Query<&mut ArcPoly>,
 ) {
+	let mut arc_poly = arc_poly_query.single_mut();
 	if gen_input.is_changed() {
 		// TODO: this is probably not the right way to do it
-		let mut single = arc_poly.single_mut();
-		let borrowed: &mut ArcPoly = single.borrow_mut();
+		let borrowed: &mut ArcPoly = arc_poly.borrow_mut();
 		*borrowed = ArcPoly::from_gen_input(&gen_input);
 	}
-	arc_poly.single().draw(&mut gizmos, false);
+	arc_poly.draw(&mut gizmos, &Color::BLUE);
+	let shrunk = arc_poly.shrunk(&mut gizmos, gen_input.shrink);
+	for sub_poly in shrunk {
+		sub_poly.draw(&mut gizmos, &Color::GREEN);
+	}
 }

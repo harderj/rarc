@@ -22,7 +22,7 @@ pub fn second_deg_eq(a: f32, b: f32, c: f32) -> Vec<f32> {
 	}
 }
 
-pub fn circle_center_from_3_points(p1: Vec2, p2: Vec2, p3: Vec2) -> Vec2 {
+pub fn circle_center_from_3_points(p1: &Vec2, p2: &Vec2, p3: &Vec2) -> Vec2 {
 	let c1 =
 		Vec3::new(p1.length_squared(), p2.length_squared(), p3.length_squared());
 	let c2 = Vec3::new(p1.x, p2.x, p3.x);
@@ -44,8 +44,9 @@ pub struct FloatVec2 {
 
 pub type Circle = FloatVec2;
 
-pub fn angle_counter_clockwise(a: Vec2, b: Vec2) -> f32 {
-	(Mat2::from_cols(a, b).determinant().atan2(a.dot(b)) + 2.0 * PI) % (2.0 * PI)
+pub fn angle_counter_clockwise(a: &Vec2, b: &Vec2) -> f32 {
+	(Mat2::from_cols(*a, *b).determinant().atan2(a.dot(*b)) + 2.0 * PI)
+		% (2.0 * PI)
 }
 
 pub fn two_circle_collision(a: &Circle, b: &Circle) -> Vec<Vec2> {
@@ -71,14 +72,14 @@ pub fn three_circle_collision(
 ) -> Option<FloatVec2> {
 	let a_ = *a - *c;
 	let b_ = *b - *c;
-	let pcol = three_circle_collision_0(a_, b_);
+	let pcol = three_circle_collision_0(&a_, &b_);
 	match pcol {
 		None => None,
 		Some(col) => Some(FloatVec2 { f: col.f - c.f, v: col.v + c.v }),
 	}
 }
 
-fn three_circle_collision_0(a: Circle, b: Circle) -> Option<FloatVec2> {
+fn three_circle_collision_0(a: &Circle, b: &Circle) -> Option<FloatVec2> {
 	let m = Mat2::from_cols(a.v, b.v).transpose();
 	let alpha = 1.0 / (2.0 * m.determinant());
 	let beta_a = a.v.length_squared() - a.f.powi(2);
