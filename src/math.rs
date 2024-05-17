@@ -49,6 +49,14 @@ pub fn angle_counter_clockwise(a: &Vec2, b: &Vec2) -> f32 {
 		% (2.0 * PI)
 }
 
+pub fn bool_to_sign(b: bool) -> f32 {
+	if b {
+		1.0
+	} else {
+		-1.0
+	}
+}
+
 pub fn two_circle_collision(a: &Circle, b: &Circle) -> Vec<Vec2> {
 	let d = (a.v - b.v).length();
 	if d > a.f + b.f || d < f32::abs(a.f - b.f) || d == 0.0 {
