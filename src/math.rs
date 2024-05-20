@@ -10,6 +10,10 @@ use bevy::{
 	reflect::Reflect,
 };
 
+pub fn midpoint(a: &Vec2, b: &Vec2) -> Vec2 {
+	0.5 * (*a + *b)
+}
+
 pub fn second_deg_eq(a: f32, b: f32, c: f32) -> Vec<f32> {
 	let d = b.powi(2) - 4.0 * a * c;
 	if d < 0.0 {
