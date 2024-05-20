@@ -71,7 +71,7 @@ fn update(
 
 	let mut three_collisions: Vec<FloatVec2> = Vec::default();
 	for [c1, c2, c3] in circles.iter_combinations() {
-		three_circle_collision(c1, c2, c3).map(|c| three_collisions.push(c));
+		three_collisions.append(&mut three_circle_collision(c1, c2, c3));
 	}
 
 	for c in three_collisions {

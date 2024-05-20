@@ -9,7 +9,9 @@ use bevy::{
 	DefaultPlugins,
 };
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
-use rarc::geom::arc_poly::{ArcPoly, ArcPolyGenInput};
+use rarc::geom::arc_poly::{
+	ArcPoly, ArcPolyGenInput, Collision, CollisionType,
+};
 
 fn main() {
 	App::new()
@@ -38,8 +40,15 @@ fn update(
 		*borrowed = ArcPoly::from_gen_input(&gen_input);
 	}
 	arc_poly.draw(&mut gizmos, &Color::BLUE);
-	let shrunk = arc_poly.shrunk(&mut gizmos, gen_input.shrink);
+	let shrunk = arc_poly.shrunk(&mut gizmos, gen_input.shrink.max(0.0));
 	for sub_poly in shrunk {
 		sub_poly.draw(&mut gizmos, &Color::GREEN);
+		// for col in sub_poly.future_collisions() {
+		// 	if let Collision { kind: CollisionType::Neighbors { .. }, time_place } =
+		// 		col
+		// 	{
+		// 		gizmos.circle_2d(time_place.v, 5.0, Color::WHITE);
+		// 	}
+		// }
 	}
 }

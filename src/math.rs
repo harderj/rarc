@@ -1,5 +1,6 @@
 extern crate derive_more;
 use derive_more::{Add, Display, Sub};
+use itertools::Itertools;
 
 use std::f32::consts::PI;
 
@@ -77,17 +78,16 @@ pub fn three_circle_collision(
 	a: &Circle,
 	b: &Circle,
 	c: &Circle,
-) -> Option<FloatVec2> {
+) -> Vec<FloatVec2> {
 	let a_ = *a - *c;
 	let b_ = *b - *c;
-	let pcol = three_circle_collision_0(&a_, &b_);
-	match pcol {
-		None => None,
-		Some(col) => Some(FloatVec2 { f: col.f - c.f, v: col.v + c.v }),
-	}
+	three_circle_collision_0(&a_, &b_)
+		.iter()
+		.map(|col| FloatVec2 { f: col.f - c.f, v: col.v + c.v })
+		.collect_vec()
 }
 
-fn three_circle_collision_0(a: &Circle, b: &Circle) -> Option<FloatVec2> {
+fn three_circle_collision_0(a: &Circle, b: &Circle) -> Vec<FloatVec2> {
 	let m = Mat2::from_cols(a.v, b.v).transpose();
 	let alpha = 1.0 / (2.0 * m.determinant());
 	let beta_a = a.v.length_squared() - a.f.powi(2);
@@ -101,35 +101,11 @@ fn three_circle_collision_0(a: &Circle, b: &Circle) -> Option<FloatVec2> {
 	let eq_a = delta_x.powi(2) + delta_y.powi(2) - 1.0;
 	let eq_b = 2.0 * (delta_x * epsilon_x + delta_y * epsilon_y);
 	let eq_c = epsilon_x.powi(2) + epsilon_y.powi(2);
-	let pot_ts = second_deg_eq(eq_a, eq_b, eq_c);
-	let pot_t = match pot_ts.len() {
-		0 => None,
-		1 => {
-			let t = *pot_ts.first().unwrap();
-			if t > 0.0 {
-				Some(t)
-			} else {
-				None
-			}
-		}
-		2 => {
-			let mut t: f32 = *pot_ts.first().unwrap();
-			if t < 0.0 {
-				t = *pot_ts.get(1).unwrap();
-			}
-			if t > 0.0 {
-				Some(t)
-			} else {
-				None
-			}
-		}
-		_ => panic!("Not possible."),
-	};
-	match pot_t {
-		None => None,
-		Some(t) => Some(FloatVec2 {
-			f: t,
+	second_deg_eq(eq_a, eq_b, eq_c)
+		.iter()
+		.map(|t| FloatVec2 {
+			f: *t,
 			v: Vec2::new(delta_x * t + epsilon_x, delta_y * t + epsilon_y),
-		}),
-	}
+		})
+		.collect_vec()
 }
