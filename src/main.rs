@@ -12,6 +12,7 @@ use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use rarc::geom::arc_poly::{ArcPoly, ArcPolyGenInput};
 
 fn main() {
+	println!("hey");
 	App::new()
 		.init_resource::<ArcPolyGenInput>()
 		.add_plugins(DefaultPlugins)
@@ -38,8 +39,14 @@ fn update(
 		*borrowed = ArcPoly::from_gen_input(&gen_input);
 	}
 	arc_poly.draw(&mut gizmos, &Color::BLUE);
-	let shrunk = arc_poly.shrunk(&mut gizmos, gen_input.shrink.max(0.0));
+	let shrink_amount = gen_input.shrink.max(0.0);
+	// let p_shrunk_naive = arc_poly.shrink_naive(shrink_amount, &mut gizmos);
+	// if let Some(shrunk_naive) = p_shrunk_naive {
+	// 	shrunk_naive.draw(&mut gizmos, &Color::WHITE)
+	// }
+	let shrunk = arc_poly.shrunk(&mut gizmos, shrink_amount);
 	for sub_poly in shrunk {
 		sub_poly.draw(&mut gizmos, &Color::GREEN);
 	}
+	// panic!();
 }

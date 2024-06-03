@@ -37,6 +37,8 @@ pub enum CollisionType {
 	Opposite { first_idx: usize, second_idx: usize },
 	#[display(fmt = "neighbors({})", idx)]
 	Neighbors { idx: usize },
+	#[display(fmt = "radius0({}, {})", idx, dummy)]
+	RadiusZero { idx: usize, dummy: Bend },
 }
 
 impl Segment {
