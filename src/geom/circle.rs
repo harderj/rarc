@@ -15,14 +15,17 @@ use crate::{
 const CIRCLE_RESOLUTION: u32 = 128;
 
 #[derive(Clone, Component, Copy, Add, Debug, Reflect, Sub, Default)]
-pub struct Circle(pub f32, pub Vec2);
+pub struct Circle {
+	pub radius: f32,
+	pub center: Vec2,
+}
 
 impl DrawableWithGizmos for Circle {
 	fn draw_gizmos(&self, gizmos: &mut Gizmos, color: Color) {
 		gizmos
 			.circle_2d(
-				Isometry2d { rotation: Default::default(), translation: self.1 },
-				self.0,
+				Isometry2d { rotation: Default::default(), translation: self.center },
+				self.radius,
 				color,
 			)
 			.resolution(CIRCLE_RESOLUTION);
@@ -30,6 +33,10 @@ impl DrawableWithGizmos for Circle {
 }
 
 impl Circle {
+	pub fn new(radius: f32, center: Vec2) -> Self {
+		Self { radius, center }
+	}
+
 	pub fn from_3_points(p1: Vec2, p2: Vec2, p3: Vec2) -> Self {
 		let c1 =
 			Vec3::new(p1.length_squared(), p2.length_squared(), p3.length_squared());
@@ -43,7 +50,7 @@ impl Circle {
 		let center =
 			Vec2::new(m2.determinant(), -m3.determinant()) * 0.5 / m1.determinant();
 		let radius = center.distance(p1);
-		Self(radius, center)
+		Self { radius, center }
 	}
 
 	pub fn from_endpoints_and_bend(a: Vec2, b: Vec2, bend: f32) -> Circle {
@@ -57,8 +64,8 @@ impl Circle {
 
 	pub fn intersect_circle(self, other: Circle) -> Vec<Vec2> {
 		let (a, b) = (self, other);
-		let Circle(r_a, c_a) = a;
-		let Circle(r_b, c_b) = b;
+		let Circle { radius: r_a, center: c_a } = a;
+		let Circle { radius: r_b, center: c_b } = b;
 		let d = (c_a - c_b).length();
 		if d > r_a + r_b || d < f32::abs(r_a - r_b) || d == 0.0 {
 			Vec::default()
@@ -77,17 +84,20 @@ impl Circle {
 	pub fn three_circle_tangent(a: Circle, b: Circle, c: Circle) -> Vec<Circle> {
 		let a_ = a - c;
 		let b_ = b - c;
-		let Circle(cf, cv) = c;
+		let Circle { radius: cf, center: cv } = c;
 		a_.three_circle_tangent_0(b_)
 			.iter()
-			.map(|Circle(radius, center)| Circle(radius - cf, center + cv))
+			.map(|Circle { radius, center }| Circle {
+				radius: radius - cf,
+				center: center + cv,
+			})
 			.collect()
 	}
 
 	fn three_circle_tangent_0(self, other: Circle) -> Vec<Circle> {
 		let (a, b) = (self, other);
-		let Circle(r_a, c_a) = a;
-		let Circle(r_b, c_b) = b;
+		let Circle { radius: r_a, center: c_a } = a;
+		let Circle { radius: r_b, center: c_b } = b;
 		let m = Mat2::from_cols(c_a, c_b).transpose();
 		let determinant = m.determinant();
 		if determinant == 0.0 {
@@ -106,9 +116,13 @@ impl Circle {
 		let eq_b = 2.0 * (delta_x * epsilon_x + delta_y * epsilon_y);
 		let eq_c = epsilon_x.powi(2) + epsilon_y.powi(2);
 		second_deg_eq(eq_a, eq_b, eq_c)
-			.iter()
-			.map(|t| {
-				Circle(*t, Vec2::new(delta_x * t + epsilon_x, delta_y * t + epsilon_y))
+			.into_iter()
+			.map(|radius| Circle {
+				radius,
+				center: Vec2::new(
+					delta_x * radius + epsilon_x,
+					delta_y * radius + epsilon_y,
+				),
 			})
 			.collect()
 	}

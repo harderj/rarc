@@ -30,9 +30,9 @@ fn main() {
 fn setup(mut commands: Commands) {
 	commands.spawn(Camera2d::default());
 	for c in [
-		Circle(150.0, vec2(0.0, 100.0)),
-		Circle(70.0, vec2(-100.0, -50.0)),
-		Circle(60.0, vec2(100.0, -50.0)),
+		Circle { radius: 150.0, center: vec2(0.0, 100.0) },
+		Circle { radius: 70.0, center: vec2(-100.0, -50.0) },
+		Circle { radius: 60.0, center: vec2(100.0, -50.0) },
 	] {
 		commands.spawn(c);
 	}
@@ -55,9 +55,11 @@ fn update(
 	circles: Query<&mut Circle>,
 ) {
 	let offset = time_resource.time * time_resource.speed;
-	let offset_ = Circle(offset, Vec2::ZERO);
+	let offset_ = Circle { radius: offset, center: Vec2::ZERO };
 
-	for (Circle(t, c), color) in circles.iter().zip(CIRCLE_COLORS) {
+	for (Circle { radius: t, center: c }, color) in
+		circles.iter().zip(CIRCLE_COLORS)
+	{
 		gizmos.circle_2d(*c, offset + t, color).resolution(CIRCLE_RESOLUTION);
 	}
 
@@ -78,7 +80,7 @@ fn update(
 		three_collisions.append(&mut Circle::three_circle_tangent(*c1, *c2, *c3));
 	}
 
-	for Circle(t, p) in three_collisions {
+	for Circle { radius: t, center: p } in three_collisions {
 		gizmos.circle_2d(p, 5.0, Color::Srgba(BLUE)).resolution(CIRCLE_RESOLUTION);
 		gizmos
 			.circle_2d(p, offset - t, Color::Srgba(GREEN).with_alpha(0.3))

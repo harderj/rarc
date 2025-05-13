@@ -46,10 +46,11 @@ fn setup(mut commands: Commands, mut triple: ResMut<Vec2Triple>) {
 
 fn update(mut gizmos: Gizmos, triple: Res<Vec2Triple>) {
 	for (point, color) in triple.iter().zip(CIRCLE_COLORS) {
-		Circle(4.0, *point).draw_gizmos(&mut gizmos, color);
+		Circle { radius: 4.0, center: *point }.draw_gizmos(&mut gizmos, color);
 	}
 
 	let circle = Circle::from_3_points(triple[0], triple[1], triple[2]);
-	Circle(4.0, circle.1).draw_gizmos(&mut gizmos, Color::WHITE);
+	Circle { radius: 4.0, center: circle.center }
+		.draw_gizmos(&mut gizmos, Color::WHITE);
 	circle.draw_gizmos(&mut gizmos, Color::Srgba(GRAY));
 }

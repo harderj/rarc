@@ -91,8 +91,8 @@ impl Arc {
 		return vec![
 			Box::new(self.with_radius(self.radius + radius)),
 			Box::new(self.with_radius(self.radius - radius).with_span(-self.span)),
-			Box::new(Circle(radius, self.start_point())),
-			Box::new(Circle(radius, self.end_point())),
+			Box::new(Circle { radius, center: self.start_point() }),
+			Box::new(Circle { radius, center: self.end_point() }),
 		];
 	}
 
@@ -112,13 +112,13 @@ impl Arc {
 		let radius =
 			ab.length() / (2.0 * f32::sqrt((2.0 - bend.abs()) * bend.abs()));
 		let arc_mid = midpoint(a, b) + perp * bend * radius;
-		let Circle(_, center) = Circle::from_3_points(a, b, arc_mid);
+		let Circle { radius: _, center } = Circle::from_3_points(a, b, arc_mid);
 		let span = bend_to_abs_angle(bend);
 		let mid = (arc_mid - center).to_angle();
 		Self { mid, span, radius, center }
 	}
 
 	pub fn to_circle(self) -> Circle {
-		Circle(self.radius, self.center)
+		Circle { radius: self.radius, center: self.center }
 	}
 }
