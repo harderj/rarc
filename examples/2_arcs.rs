@@ -8,7 +8,7 @@ use bevy::{
 
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
-use rarc::geom::arc::Arc;
+use rarc::geom::{arc::Arc, misc::DrawableWithGizmos};
 
 #[derive(Resource, Reflect)]
 struct Input {
@@ -54,7 +54,7 @@ fn update(mut gizmos: Gizmos, input: ResMut<Input>) {
 		Arc::from_a_b_bend(input.x, input.y, input.b1 * BEND_SCALE),
 		Arc::from_a_b_bend(input.y, input.z, input.b2 * BEND_SCALE),
 	];
-	orig.map(|a| a.draw(&mut gizmos, Color::WHITE));
+	orig.map(|a| a.draw_gizmos(&mut gizmos, Color::WHITE));
 
 	// let f = input.t * 5.0;
 	// let newr = orig.clone();

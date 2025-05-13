@@ -2,16 +2,18 @@ use std::f32::consts::PI;
 
 use bevy::{
 	DefaultPlugins,
-	app::{App, Startup},
-	color::palettes::css::*,
-	ecs::system::Commands,
+	app::{App, Startup, Update},
+	color::{Color, palettes::css::*},
+	core_pipeline::core_2d::Camera2d,
+	ecs::system::{Commands, Res, ResMut},
 	gizmos::gizmos::Gizmos,
-	prelude::*,
+	math::Vec2,
+	prelude::{Deref, DerefMut, ReflectResource, Resource},
+	reflect::Reflect,
 };
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
-
-use rarc::math::circle_center_from_3_points;
+use rarc::geom::{circle::Circle, misc::DrawableWithGizmos};
 
 const CIRCLE_COLORS: [Color; 4] = [
 	Color::Srgba(RED),
@@ -19,8 +21,6 @@ const CIRCLE_COLORS: [Color; 4] = [
 	Color::Srgba(YELLOW),
 	Color::Srgba(YELLOW_GREEN),
 ];
-
-const CIRCLE_RESOLUTION: u32 = 128;
 
 #[derive(Resource, Reflect, Default, Deref, DerefMut)]
 #[reflect(Resource)]
@@ -46,12 +46,10 @@ fn setup(mut commands: Commands, mut triple: ResMut<Vec2Triple>) {
 
 fn update(mut gizmos: Gizmos, triple: Res<Vec2Triple>) {
 	for (point, color) in triple.iter().zip(CIRCLE_COLORS) {
-		gizmos.circle_2d(*point, 4.0, color).resolution(CIRCLE_RESOLUTION);
+		Circle(4.0, *point).draw_gizmos(&mut gizmos, color);
 	}
 
-	let center = circle_center_from_3_points(triple[0], triple[1], triple[2]);
-	gizmos.circle_2d(center, 4.0, Color::WHITE).resolution(CIRCLE_RESOLUTION);
-	gizmos
-		.circle_2d(center, (center - triple[0]).length(), Color::Srgba(GRAY))
-		.resolution(CIRCLE_RESOLUTION);
+	let circle = Circle::from_3_points(triple[0], triple[1], triple[2]);
+	Circle(4.0, circle.1).draw_gizmos(&mut gizmos, Color::WHITE);
+	circle.draw_gizmos(&mut gizmos, Color::Srgba(GRAY));
 }

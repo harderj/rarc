@@ -4,6 +4,7 @@ pub mod util;
 
 pub mod geom {
 	pub mod arc;
+	pub mod circle;
 	pub mod misc;
 }
 

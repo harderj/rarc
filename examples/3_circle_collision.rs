@@ -1,25 +1,23 @@
 use bevy::{
 	DefaultPlugins,
-	app::{App, Startup},
-	color::palettes::css::*,
-	ecs::system::Commands,
+	app::{App, Startup, Update},
+	color::{Alpha, Color, palettes::css::*},
+	core_pipeline::core_2d::Camera2d,
+	ecs::system::{Commands, Query, Res},
 	gizmos::gizmos::Gizmos,
-	prelude::*,
+	math::{Vec2, vec2},
 };
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::{
 	ResourceInspectorPlugin, WorldInspectorPlugin,
 };
 
-use rarc::{
-	math::{Circle, FloatVec2, three_circle_collision, two_circle_collision},
-	util::TimeResource,
-};
+use rarc::{geom::circle::Circle, util::TimeResource};
 
 fn main() {
 	App::new()
 		.init_resource::<TimeResource>()
-		.register_type::<FloatVec2>()
+		.register_type::<Circle>()
 		.add_plugins(DefaultPlugins)
 		.add_plugins(EguiPlugin { enable_multipass_for_primary_context: true })
 		.add_plugins(ResourceInspectorPlugin::<TimeResource>::new())
@@ -32,9 +30,9 @@ fn main() {
 fn setup(mut commands: Commands) {
 	commands.spawn(Camera2d::default());
 	for c in [
-		FloatVec2(150.0, Vec2::new(0.0, 100.0)),
-		FloatVec2(70.0, Vec2::new(-100.0, -50.0)),
-		FloatVec2(60.0, Vec2::new(100.0, -50.0)),
+		Circle(150.0, vec2(0.0, 100.0)),
+		Circle(70.0, vec2(-100.0, -50.0)),
+		Circle(60.0, vec2(100.0, -50.0)),
 	] {
 		commands.spawn(c);
 	}
@@ -57,15 +55,15 @@ fn update(
 	circles: Query<&mut Circle>,
 ) {
 	let offset = time_resource.time * time_resource.speed;
-	let offset_ = FloatVec2(offset, Vec2::ZERO);
+	let offset_ = Circle(offset, Vec2::ZERO);
 
-	for (FloatVec2(t, c), color) in circles.iter().zip(CIRCLE_COLORS) {
+	for (Circle(t, c), color) in circles.iter().zip(CIRCLE_COLORS) {
 		gizmos.circle_2d(*c, offset + t, color).resolution(CIRCLE_RESOLUTION);
 	}
 
 	let mut two_collisions: Vec<(Vec2, Color)> = Vec::default();
 	for [c1, c2] in circles.iter_combinations() {
-		let collisions = two_circle_collision(*c1 + offset_, *c2 + offset_);
+		let collisions = (*c1 + offset_).intersect_circle(*c2 + offset_);
 		let mut colored: Vec<(Vec2, Color)> =
 			collisions.into_iter().zip(COLLISION_COLORS).collect();
 		two_collisions.append(&mut colored);
@@ -75,12 +73,12 @@ fn update(
 		gizmos.circle_2d(center, 4.0, color).resolution(CIRCLE_RESOLUTION);
 	}
 
-	let mut three_collisions: Vec<FloatVec2> = Vec::default();
+	let mut three_collisions: Vec<Circle> = Vec::default();
 	for [c1, c2, c3] in circles.iter_combinations() {
-		three_collisions.append(&mut three_circle_collision(*c1, *c2, *c3));
+		three_collisions.append(&mut Circle::three_circle_tangent(*c1, *c2, *c3));
 	}
 
-	for FloatVec2(t, p) in three_collisions {
+	for Circle(t, p) in three_collisions {
 		gizmos.circle_2d(p, 5.0, Color::Srgba(BLUE)).resolution(CIRCLE_RESOLUTION);
 		gizmos
 			.circle_2d(p, offset - t, Color::Srgba(GREEN).with_alpha(0.3))

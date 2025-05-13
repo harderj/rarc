@@ -11,7 +11,7 @@ edition = "2024"
 bevy = { version = "0.16.0" }
 bevy_egui = { version = "0.34.1" }
 bevy-inspector-egui = { version = "0.31.0" }
-derive_more = { version = "2.0.1", features = ["add"] }
+derive_more = { version = "2.0.1", features = ["add", "deref"] }
 itertools = "0.14.0"
 rand = "0.9.1"
 rand_distr = "0.5.1"
