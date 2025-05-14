@@ -13,9 +13,9 @@ use bevy::{
 	math::Vec2,
 	reflect::Reflect,
 };
-
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
+use bevy_pancam::{PanCam, PanCamPlugin};
 use rarc::{
 	geom::{
 		arc::Arc, arc_graph::ArcGraph, circle::Circle, misc::DrawableWithGizmos,
@@ -36,7 +36,7 @@ struct CustomResource {
 
 fn main() {
 	App::new()
-		.add_plugins(DefaultPlugins)
+		.add_plugins((DefaultPlugins, PanCamPlugin::default()))
 		.init_resource::<CustomResource>()
 		.add_plugins(EguiPlugin { enable_multipass_for_primary_context: true })
 		.add_plugins(ResourceInspectorPlugin::<CustomResource>::default())
@@ -46,7 +46,10 @@ fn main() {
 }
 
 fn setup(mut commands: Commands, mut resource: ResMut<CustomResource>) {
-	commands.spawn(Camera2d::default());
+	commands.spawn((
+		Camera2d::default(),
+		PanCam { grab_buttons: vec![], ..Default::default() },
+	));
 	resource.arc1 =
 		Arc { mid: 3.0, span: PI, radius: 130.0, ..Default::default() };
 	resource.arc2 =

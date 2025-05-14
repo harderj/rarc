@@ -12,13 +12,14 @@ use bevy_inspector_egui::quick::{
 	ResourceInspectorPlugin, WorldInspectorPlugin,
 };
 
+use bevy_pancam::{PanCam, PanCamPlugin};
 use rarc::{geom::circle::Circle, util::FloatResource};
 
 fn main() {
 	App::new()
 		.init_resource::<FloatResource>()
 		.register_type::<Circle>()
-		.add_plugins(DefaultPlugins)
+		.add_plugins((DefaultPlugins, PanCamPlugin::default()))
 		.add_plugins(EguiPlugin { enable_multipass_for_primary_context: true })
 		.add_plugins(ResourceInspectorPlugin::<FloatResource>::new())
 		.add_plugins(WorldInspectorPlugin::new())
@@ -28,7 +29,10 @@ fn main() {
 }
 
 fn setup(mut commands: Commands) {
-	commands.spawn(Camera2d::default());
+	commands.spawn((
+		Camera2d::default(),
+		PanCam { grab_buttons: vec![], ..Default::default() },
+	));
 	for c in [
 		Circle { radius: 150.0, center: vec2(0.0, 100.0) },
 		Circle { radius: 70.0, center: vec2(-100.0, -50.0) },

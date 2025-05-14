@@ -13,6 +13,7 @@ use bevy::{
 };
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
+use bevy_pancam::{PanCam, PanCamPlugin};
 use derive_more::{Deref, DerefMut};
 
 use rarc::geom::{circle::Circle, misc::DrawableWithGizmos};
@@ -31,7 +32,7 @@ struct Vec2Triple([Vec2; 3]);
 fn main() {
 	App::new()
 		.init_resource::<Vec2Triple>()
-		.add_plugins(DefaultPlugins)
+		.add_plugins((DefaultPlugins, PanCamPlugin::default()))
 		.add_plugins(EguiPlugin { enable_multipass_for_primary_context: true })
 		.add_plugins(ResourceInspectorPlugin::<Vec2Triple>::new())
 		.add_systems(Startup, setup)
@@ -40,7 +41,10 @@ fn main() {
 }
 
 fn setup(mut commands: Commands, mut triple: ResMut<Vec2Triple>) {
-	commands.spawn(Camera2d::default());
+	commands.spawn((
+		Camera2d::default(),
+		PanCam { grab_buttons: vec![], ..Default::default() },
+	));
 	for (i, point) in triple.iter_mut().enumerate() {
 		*point = Vec2::from_angle(2.0 * PI * (i as f32) / 3.0) * 100.0;
 	}
