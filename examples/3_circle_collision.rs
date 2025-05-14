@@ -12,15 +12,15 @@ use bevy_inspector_egui::quick::{
 	ResourceInspectorPlugin, WorldInspectorPlugin,
 };
 
-use rarc::{geom::circle::Circle, util::TimeResource};
+use rarc::{geom::circle::Circle, util::FloatResource};
 
 fn main() {
 	App::new()
-		.init_resource::<TimeResource>()
+		.init_resource::<FloatResource>()
 		.register_type::<Circle>()
 		.add_plugins(DefaultPlugins)
 		.add_plugins(EguiPlugin { enable_multipass_for_primary_context: true })
-		.add_plugins(ResourceInspectorPlugin::<TimeResource>::new())
+		.add_plugins(ResourceInspectorPlugin::<FloatResource>::new())
 		.add_plugins(WorldInspectorPlugin::new())
 		.add_systems(Startup, setup)
 		.add_systems(Update, update)
@@ -51,10 +51,10 @@ const CIRCLE_RESOLUTION: u32 = 128;
 
 fn update(
 	mut gizmos: Gizmos,
-	time_resource: Res<TimeResource>,
+	time_resource: Res<FloatResource>,
 	circles: Query<&mut Circle>,
 ) {
-	let offset = time_resource.time * time_resource.speed;
+	let offset = time_resource.value * time_resource.scale;
 	let offset_ = Circle { radius: offset, center: Vec2::ZERO };
 
 	for (Circle { radius: t, center: c }, color) in

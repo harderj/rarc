@@ -1,16 +1,30 @@
-use bevy::{ecs::resource::Resource, math::Vec2, reflect::Reflect};
+use std::f32::consts::PI;
+
+use bevy::{
+	color::Color, ecs::resource::Resource, math::Vec2, reflect::Reflect,
+};
 
 use crate::constants::SAME_POINT_TOLERANCE;
 
-#[derive(Reflect, Resource)]
-pub struct TimeResource {
-	pub time: f32,
-	pub speed: f32,
+#[derive(Copy, Clone, Reflect, Resource)]
+pub struct FloatResource {
+	pub value: f32,
+	pub scale: f32,
 }
 
-impl Default for TimeResource {
+impl FloatResource {
+	pub fn get(self) -> f32 {
+		self.value * self.scale
+	}
+}
+
+pub fn color_hash(seed: usize) -> Color {
+	Color::hsl(PI * (seed as f32) * 1000.0, 0.7, 0.7)
+}
+
+impl Default for FloatResource {
 	fn default() -> Self {
-		Self { time: Default::default(), speed: 10.0 }
+		Self { value: Default::default(), scale: 10.0 }
 	}
 }
 

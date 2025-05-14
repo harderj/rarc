@@ -13,7 +13,10 @@ use petgraph::graph::UnGraph;
 use crate::{
 	constants::{GENERAL_EPSILON, PIXEL_EPSILON},
 	geom::{circle::Circle, misc::DrawableWithGizmos},
-	math::{bend_to_abs_angle, counterclockwise_difference, midpoint},
+	math::{
+		bend_to_abs_angle, clockwise_difference, counterclockwise_difference,
+		midpoint,
+	},
 };
 
 static ARC_DRAW_SEGMENTS: u32 = 128;
@@ -56,13 +59,24 @@ impl DrawableWithGizmos for Arc {
 }
 
 impl Arc {
-	pub fn from_angles(
+	pub fn from_angles_counterclockwise(
 		start_angle: f32,
 		end_angle: f32,
 		radius: f32,
 		center: Vec2,
 	) -> Self {
 		let span = counterclockwise_difference(start_angle, end_angle);
+		let mid = start_angle + 0.5 * span;
+		Self { mid, span, radius, center }
+	}
+
+	pub fn from_angles_clockwise(
+		start_angle: f32,
+		end_angle: f32,
+		radius: f32,
+		center: Vec2,
+	) -> Self {
+		let span = -clockwise_difference(start_angle, end_angle);
 		let mid = start_angle + 0.5 * span;
 		Self { mid, span, radius, center }
 	}
@@ -104,37 +118,53 @@ impl Arc {
 		let mut g = UnGraph::<Arc, Vec2>::new_undirected();
 		let _idx1 = g.add_node(self.with_radius(self.radius + radius));
 		if radius.abs() < self.radius.abs() {
-			let _idx2 = g.add_node(Arc {
+			let end_point_arc = Arc {
 				radius,
 				center: self.end_point(),
-				mid: self.end_angle() + FRAC_PI_2,
-				span: PI,
-			});
-			let _idx3 = g
-				.add_node(self.with_radius(self.radius - radius).with_span(-self.span));
-			let _idx4 = g.add_node(Arc {
+				mid: self.end_angle() + FRAC_PI_2 * self.span.signum(),
+				span: PI * self.span.signum(),
+			};
+			let start_point_arc = Arc {
 				radius,
 				center: self.start_point(),
-				mid: self.start_angle() - FRAC_PI_2,
-				span: PI,
-			});
+				mid: self.start_angle() - FRAC_PI_2 * self.span.signum(),
+				span: PI * self.span.signum(),
+			};
+			let _idx2 = g.add_node(end_point_arc);
+			let _idx3 = g
+				.add_node(self.with_radius(self.radius - radius).with_span(-self.span));
+			let _idx4 = g.add_node(start_point_arc);
+			g.add_edge(_idx1, _idx2, end_point_arc.start_point());
+			g.add_edge(_idx2, _idx3, end_point_arc.end_point());
+			g.add_edge(_idx3, _idx4, start_point_arc.start_point());
+			g.add_edge(_idx4, _idx1, start_point_arc.end_point());
 		} else {
 			if let Some(&intersection) = Circle::new(radius, self.start_point())
 				.intersect_circle(Circle::new(radius, self.end_point()))
-				.get(1)
+				.get((0.5 * (self.span.signum() + 1.0)) as usize)
 			{
-				let _idx2 = g.add_node(Arc::from_angles(
+				let f = if self.span < 0.0 {
+					Arc::from_angles_clockwise
+				} else {
+					Arc::from_angles_counterclockwise
+				};
+				let end_point_arc = f(
 					self.end_angle(),
 					(intersection - self.end_point()).to_angle(),
 					radius,
 					self.end_point(),
-				));
-				let _idx3 = g.add_node(Arc::from_angles(
+				);
+				let start_point_arc = f(
 					(intersection - self.start_point()).to_angle(),
 					self.start_angle(),
 					radius,
 					self.start_point(),
-				));
+				);
+				let _idx2 = g.add_node(end_point_arc);
+				let _idx3 = g.add_node(start_point_arc);
+				g.add_edge(_idx1, _idx2, end_point_arc.start_point());
+				g.add_edge(_idx2, _idx3, end_point_arc.end_point());
+				g.add_edge(_idx3, _idx2, start_point_arc.end_point());
 			}
 		}
 		g

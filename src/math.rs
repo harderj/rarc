@@ -21,6 +21,10 @@ pub fn counterclockwise_difference(a: f32, b: f32) -> f32 {
 	between_0_2_pi(between_0_2_pi(b) - between_0_2_pi(a))
 }
 
+pub fn clockwise_difference(a: f32, b: f32) -> f32 {
+	between_0_2_pi(between_0_2_pi(a) - between_0_2_pi(b))
+}
+
 pub fn midpoint(a: Vec2, b: Vec2) -> Vec2 {
 	0.5 * (a + b)
 }
