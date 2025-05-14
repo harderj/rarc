@@ -65,7 +65,7 @@ fn update(
 
 	let mut two_collisions: Vec<(Vec2, Color)> = Vec::default();
 	for [c1, c2] in circles.iter_combinations() {
-		let collisions = (*c1 + offset_).intersect_circle(*c2 + offset_);
+		let collisions = (*c1 + offset_).intersect(*c2 + offset_);
 		let mut colored: Vec<(Vec2, Color)> =
 			collisions.into_iter().zip(COLLISION_COLORS).collect();
 		two_collisions.append(&mut colored);

@@ -62,7 +62,7 @@ impl Circle {
 		Self::from_3_points(a, b, arc_mid)
 	}
 
-	pub fn intersect_circle(self, other: Circle) -> Vec<Vec2> {
+	pub fn intersect(self, other: Circle) -> Vec<Vec2> {
 		let (a, b) = (self, other);
 		let Circle { radius: r_a, center: c_a } = a;
 		let Circle { radius: r_b, center: c_b } = b;

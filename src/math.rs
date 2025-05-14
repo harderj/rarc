@@ -14,15 +14,30 @@ pub fn angle_within(a: f32, min: f32, max: f32) -> bool {
 }
 
 pub fn between_0_2_pi(a: f32) -> f32 {
-	(2.0 * PI + a) % (2.0 * PI)
+	(2.0 * PI + (2.0 * PI + a) % (2.0 * PI)) % (2.0 * PI)
 }
 
-pub fn counterclockwise_difference(a: f32, b: f32) -> f32 {
-	between_0_2_pi(between_0_2_pi(b) - between_0_2_pi(a))
+pub fn between_clockwise(angle: f32, from: f32, to: f32) -> bool {
+	let angle_ = between_0_2_pi(angle);
+	let from_ = between_0_2_pi(from);
+	let to_ = between_0_2_pi(to);
+	if from_ < to_ {
+		angle_ <= from_ || angle_ > to_
+	} else {
+		angle_ <= from_ && angle_ > to_
+	}
+}
+
+pub fn between_counterclockwise(angle: f32, from: f32, to: f32) -> bool {
+	!between_clockwise(angle, from, to)
 }
 
 pub fn clockwise_difference(a: f32, b: f32) -> f32 {
 	between_0_2_pi(between_0_2_pi(a) - between_0_2_pi(b))
+}
+
+pub fn counterclockwise_difference(a: f32, b: f32) -> f32 {
+	between_0_2_pi(between_0_2_pi(b) - between_0_2_pi(a))
 }
 
 pub fn midpoint(a: Vec2, b: Vec2) -> Vec2 {

@@ -1,62 +1,67 @@
+use std::f32::consts::PI;
+
 use bevy::{
 	DefaultPlugins,
 	app::{App, Startup, Update},
-	ecs::system::Commands,
+	color::Color,
+	core_pipeline::core_2d::Camera2d,
+	ecs::{
+		resource::Resource,
+		system::{Commands, ResMut},
+	},
 	gizmos::gizmos::Gizmos,
-	prelude::*,
+	math::Vec2,
+	reflect::Reflect,
 };
 
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
-use rarc::geom::{arc::Arc, misc::DrawableWithGizmos};
+use rarc::{
+	geom::{arc::Arc, circle::Circle, misc::DrawableWithGizmos},
+	util::FloatResource,
+};
 
-#[derive(Resource, Reflect)]
-struct Input {
-	x: Vec2,
-	y: Vec2,
-	z: Vec2,
-	b1: f32,
-	b2: f32,
-	t: f32,
-}
-
-impl Default for Input {
-	fn default() -> Self {
-		Input {
-			x: Vec2 { x: -150.0, y: 100.0 },
-			y: Vec2 { x: -50.0, y: -100.0 },
-			z: Vec2 { x: 140.0, y: 80.0 },
-			b1: 10.0,
-			b2: 8.0,
-			t: 5.0,
-		}
-	}
+#[derive(Default, Resource, Reflect)]
+struct CustomResource {
+	arc1: Arc,
+	arc2: Arc,
+	time: FloatResource,
+	show_original: bool,
+	show_minkowski: bool,
 }
 
 fn main() {
 	App::new()
 		.add_plugins(DefaultPlugins)
-		.init_resource::<Input>()
+		.init_resource::<CustomResource>()
 		.add_plugins(EguiPlugin { enable_multipass_for_primary_context: true })
-		.add_plugins(ResourceInspectorPlugin::<Input>::default())
+		.add_plugins(ResourceInspectorPlugin::<CustomResource>::default())
 		.add_systems(Startup, setup)
 		.add_systems(Update, update)
 		.run();
 }
 
-fn setup(mut commands: Commands) {
+fn setup(mut commands: Commands, mut resource: ResMut<CustomResource>) {
 	commands.spawn(Camera2d::default());
+	resource.arc1 =
+		Arc { mid: 3.0, span: PI, radius: 130.0, ..Default::default() };
+	resource.arc2 =
+		Arc { mid: -9.0, span: PI, radius: 150.0, center: Vec2::X * 30.0 };
+	resource.show_original = true;
+	resource.show_minkowski = true;
 }
 
-fn update(mut gizmos: Gizmos, input: ResMut<Input>) {
-	static BEND_SCALE: f32 = 0.02;
-	let orig: [Arc; 2] = [
-		Arc::from_a_b_bend(input.x, input.y, input.b1 * BEND_SCALE),
-		Arc::from_a_b_bend(input.y, input.z, input.b2 * BEND_SCALE),
-	];
-	orig.map(|a| a.draw_gizmos(&mut gizmos, Color::WHITE));
-
-	// let f = input.t * 5.0;
-	// let newr = orig.clone();
-	// newr.map(|a| a.draw(&mut gizmos, Color::WHITE));
+fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
+	let (arc1, arc2) = (resource.arc1, resource.arc2);
+	if resource.show_original {
+		[resource.arc1, resource.arc2]
+			.map(|a| a.draw_gizmos(&mut gizmos, Color::WHITE));
+		arc1
+			.intersect(arc2)
+			.into_iter()
+			.for_each(|p| Circle::new(5.0, p).draw_gizmos(&mut gizmos, Color::WHITE));
+	}
+	if resource.show_minkowski {
+		// todo
+	}
 }
