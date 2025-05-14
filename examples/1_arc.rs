@@ -3,7 +3,7 @@ use std::f32::consts::FRAC_PI_2;
 use bevy::{
 	DefaultPlugins,
 	app::{App, Startup, Update},
-	color::{Alpha, Color},
+	color::Color,
 	core_pipeline::core_2d::Camera2d,
 	ecs::{
 		resource::Resource,
@@ -16,8 +16,11 @@ use bevy::{
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use rarc::{
-	geom::{arc::Arc, circle::Circle, misc::DrawableWithGizmos},
-	util::{FloatResource, color_hash},
+	geom::{
+		arc::Arc,
+		misc::{DrawableWithGizmos, show_arc_graph},
+	},
+	util::FloatResource,
 };
 
 #[derive(Default, Resource, Reflect)]
@@ -54,17 +57,6 @@ fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
 	}
 	if resource.show_minkowski {
 		let minkowski_disc = arc.minkowski_disc(resource.time.get());
-		for i in minkowski_disc.node_indices() {
-			let arc = minkowski_disc.node_weight(i).unwrap();
-			arc.draw_gizmos(&mut gizmos, color_hash(i.index()));
-		}
-		for i in minkowski_disc.edge_indices() {
-			let (j, k) = minkowski_disc.edge_endpoints(i).unwrap();
-			let &p = minkowski_disc.edge_weight(i).unwrap();
-			Circle::new(4.0, p)
-				.draw_gizmos(&mut gizmos, color_hash(j.index()).with_alpha(0.3));
-			Circle::new(6.0, p)
-				.draw_gizmos(&mut gizmos, color_hash(k.index()).with_alpha(0.3));
-		}
+		show_arc_graph(&minkowski_disc, &mut gizmos);
 	}
 }

@@ -17,7 +17,11 @@ use bevy::{
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use rarc::{
-	geom::{arc::Arc, circle::Circle, misc::DrawableWithGizmos},
+	geom::{
+		arc::Arc,
+		circle::Circle,
+		misc::{DrawableWithGizmos, show_arc_graph},
+	},
 	util::FloatResource,
 };
 
@@ -49,19 +53,21 @@ fn setup(mut commands: Commands, mut resource: ResMut<CustomResource>) {
 		Arc { mid: -9.0, span: PI, radius: 150.0, center: Vec2::X * 30.0 };
 	resource.show_original = true;
 	resource.show_minkowski = true;
+	resource.time = FloatResource { scale: 10.0, value: 5.0 };
 }
 
 fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
 	let (arc1, arc2) = (resource.arc1, resource.arc2);
 	if resource.show_original {
-		[resource.arc1, resource.arc2]
-			.map(|a| a.draw_gizmos(&mut gizmos, Color::WHITE));
+		[arc1, arc2].map(|a| a.draw_gizmos(&mut gizmos, Color::WHITE));
 		arc1
 			.intersect(arc2)
 			.into_iter()
 			.for_each(|p| Circle::new(5.0, p).draw_gizmos(&mut gizmos, Color::WHITE));
 	}
 	if resource.show_minkowski {
-		// todo
+		let ms = [arc1, arc2].map(|a| a.minkowski_disc(resource.time.get()));
+		ms.iter().for_each(|m| show_arc_graph(m, &mut gizmos));
+		// let [m1, m2] = ms; // todo
 	}
 }
