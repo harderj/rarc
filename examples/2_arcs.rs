@@ -3,7 +3,7 @@ use std::f32::consts::PI;
 use bevy::{
 	DefaultPlugins,
 	app::{App, Startup, Update},
-	color::Color,
+	color::palettes::css::GREEN,
 	core_pipeline::core_2d::Camera2d,
 	ecs::{
 		resource::Resource,
@@ -18,9 +18,7 @@ use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use rarc::{
 	geom::{
-		arc::Arc,
-		circle::Circle,
-		misc::{DrawableWithGizmos, show_arc_graph},
+		arc::Arc, arc_graph::ArcGraph, circle::Circle, misc::DrawableWithGizmos,
 	},
 	util::FloatResource,
 };
@@ -59,15 +57,18 @@ fn setup(mut commands: Commands, mut resource: ResMut<CustomResource>) {
 fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
 	let (arc1, arc2) = (resource.arc1, resource.arc2);
 	if resource.show_original {
-		[arc1, arc2].map(|a| a.draw_gizmos(&mut gizmos, Color::WHITE));
+		[arc1, arc2].map(|a| a.draw_gizmos(&mut gizmos, None));
 		arc1
 			.intersect(arc2)
 			.into_iter()
-			.for_each(|p| Circle::new(5.0, p).draw_gizmos(&mut gizmos, Color::WHITE));
+			.for_each(|p| Circle::new(5.0, p).draw_gizmos(&mut gizmos, None));
 	}
 	if resource.show_minkowski {
-		let ms = [arc1, arc2].map(|a| a.minkowski_disc(resource.time.get()));
-		ms.iter().for_each(|m| show_arc_graph(m, &mut gizmos));
+		let ms =
+			[arc1, arc2].map(|a| ArcGraph::minkowski_arc(a, resource.time.get()));
+		ms.iter().for_each(|m| {
+			m.draw_gizmos(&mut gizmos, Some(bevy::color::Color::Srgba(GREEN)))
+		});
 		// let [m1, m2] = ms; // todo
 	}
 }

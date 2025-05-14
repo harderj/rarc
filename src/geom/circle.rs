@@ -21,12 +21,12 @@ pub struct Circle {
 }
 
 impl DrawableWithGizmos for Circle {
-	fn draw_gizmos(&self, gizmos: &mut Gizmos, color: Color) {
+	fn draw_gizmos(&self, gizmos: &mut Gizmos, color: Option<Color>) {
 		gizmos
 			.circle_2d(
 				Isometry2d { rotation: Default::default(), translation: self.center },
 				self.radius,
-				color,
+				color.unwrap_or(Color::WHITE),
 			)
 			.resolution(CIRCLE_RESOLUTION);
 	}

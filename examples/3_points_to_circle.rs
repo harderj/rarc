@@ -8,11 +8,13 @@ use bevy::{
 	ecs::system::{Commands, Res, ResMut},
 	gizmos::gizmos::Gizmos,
 	math::Vec2,
-	prelude::{Deref, DerefMut, ReflectResource, Resource},
+	prelude::{ReflectResource, Resource},
 	reflect::Reflect,
 };
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
+use derive_more::{Deref, DerefMut};
+
 use rarc::geom::{circle::Circle, misc::DrawableWithGizmos};
 
 const CIRCLE_COLORS: [Color; 4] = [
@@ -46,11 +48,11 @@ fn setup(mut commands: Commands, mut triple: ResMut<Vec2Triple>) {
 
 fn update(mut gizmos: Gizmos, triple: Res<Vec2Triple>) {
 	for (point, color) in triple.iter().zip(CIRCLE_COLORS) {
-		Circle { radius: 4.0, center: *point }.draw_gizmos(&mut gizmos, color);
+		Circle { radius: 4.0, center: *point }
+			.draw_gizmos(&mut gizmos, Some(color));
 	}
 
 	let circle = Circle::from_3_points(triple[0], triple[1], triple[2]);
-	Circle { radius: 4.0, center: circle.center }
-		.draw_gizmos(&mut gizmos, Color::WHITE);
-	circle.draw_gizmos(&mut gizmos, Color::Srgba(GRAY));
+	Circle { radius: 4.0, center: circle.center }.draw_gizmos(&mut gizmos, None);
+	circle.draw_gizmos(&mut gizmos, Some(Color::Srgba(GRAY)));
 }

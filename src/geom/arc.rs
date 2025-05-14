@@ -1,5 +1,5 @@
 use core::f32;
-use std::f32::consts::{FRAC_PI_2, PI};
+use std::f32::consts::FRAC_PI_2;
 
 use bevy::{
 	color::Color,
@@ -8,7 +8,6 @@ use bevy::{
 	math::{Isometry2d, Rot2, Vec2, vec2},
 	reflect::Reflect,
 };
-use petgraph::graph::UnGraph;
 
 use crate::{
 	constants::{GENERAL_EPSILON, PIXEL_EPSILON},
@@ -31,7 +30,7 @@ pub struct Arc {
 }
 
 impl DrawableWithGizmos for Arc {
-	fn draw_gizmos(&self, gizmos: &mut Gizmos, color: Color) {
+	fn draw_gizmos(&self, gizmos: &mut Gizmos, color: Option<Color>) {
 		if self.valid() {
 			gizmos
 				.arc_2d(
@@ -41,7 +40,7 @@ impl DrawableWithGizmos for Arc {
 					),
 					self.span,
 					self.radius,
-					color,
+					color.unwrap_or(Color::WHITE),
 				)
 				.resolution(ARC_DRAW_SEGMENTS);
 			let m = self.mid_arc_point();
@@ -52,7 +51,7 @@ impl DrawableWithGizmos for Arc {
 					m,
 					m + vec2(-5.0, -5.0).rotate(Vec2::from_angle(angle)),
 				],
-				color,
+				color.unwrap_or(Color::WHITE),
 			);
 		}
 	}
@@ -137,63 +136,6 @@ impl Arc {
 		self.params().into_iter().all(f32::is_finite)
 			&& self.radius.abs() > PIXEL_EPSILON
 			&& self.span.abs() > GENERAL_EPSILON
-	}
-
-	pub fn minkowski_disc(self, radius: f32) -> UnGraph<Arc, Vec2> {
-		// consider to make this cleaner by changing circles into arcs
-		let mut g = UnGraph::<Arc, Vec2>::new_undirected();
-		let _idx1 = g.add_node(self.with_radius(self.radius + radius));
-		if radius.abs() < self.radius.abs() {
-			let end_point_arc = Arc {
-				radius,
-				center: self.end_point(),
-				mid: self.end_angle() + FRAC_PI_2 * self.span.signum(),
-				span: PI * self.span.signum(),
-			};
-			let start_point_arc = Arc {
-				radius,
-				center: self.start_point(),
-				mid: self.start_angle() - FRAC_PI_2 * self.span.signum(),
-				span: PI * self.span.signum(),
-			};
-			let _idx2 = g.add_node(end_point_arc);
-			let _idx3 = g
-				.add_node(self.with_radius(self.radius - radius).with_span(-self.span));
-			let _idx4 = g.add_node(start_point_arc);
-			g.add_edge(_idx1, _idx2, end_point_arc.start_point());
-			g.add_edge(_idx2, _idx3, end_point_arc.end_point());
-			g.add_edge(_idx3, _idx4, start_point_arc.start_point());
-			g.add_edge(_idx4, _idx1, start_point_arc.end_point());
-		} else {
-			if let Some(&intersection) = Circle::new(radius, self.start_point())
-				.intersect(Circle::new(radius, self.end_point()))
-				.get((0.5 * (self.span.signum() + 1.0)) as usize)
-			{
-				let f = if self.span < 0.0 {
-					Arc::from_angles_clockwise
-				} else {
-					Arc::from_angles_counterclockwise
-				};
-				let end_point_arc = f(
-					self.end_angle(),
-					(intersection - self.end_point()).to_angle(),
-					radius,
-					self.end_point(),
-				);
-				let start_point_arc = f(
-					(intersection - self.start_point()).to_angle(),
-					self.start_angle(),
-					radius,
-					self.start_point(),
-				);
-				let _idx2 = g.add_node(end_point_arc);
-				let _idx3 = g.add_node(start_point_arc);
-				g.add_edge(_idx1, _idx2, end_point_arc.start_point());
-				g.add_edge(_idx2, _idx3, end_point_arc.end_point());
-				g.add_edge(_idx3, _idx2, start_point_arc.end_point());
-			}
-		}
-		g
 	}
 
 	pub fn in_span(self, point: Vec2) -> bool {

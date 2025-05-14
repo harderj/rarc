@@ -3,7 +3,6 @@ use std::f32::consts::FRAC_PI_2;
 use bevy::{
 	DefaultPlugins,
 	app::{App, Startup, Update},
-	color::Color,
 	core_pipeline::core_2d::Camera2d,
 	ecs::{
 		resource::Resource,
@@ -16,10 +15,7 @@ use bevy::{
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use rarc::{
-	geom::{
-		arc::Arc,
-		misc::{DrawableWithGizmos, show_arc_graph},
-	},
+	geom::{arc::Arc, arc_graph::ArcGraph, misc::DrawableWithGizmos},
 	util::FloatResource,
 };
 
@@ -53,10 +49,10 @@ fn setup(mut commands: Commands, mut resource: ResMut<CustomResource>) {
 fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
 	let arc = resource.arc;
 	if resource.show_orignal_arc {
-		arc.draw_gizmos(&mut gizmos, Color::WHITE);
+		arc.draw_gizmos(&mut gizmos, None);
 	}
 	if resource.show_minkowski {
-		let minkowski_disc = arc.minkowski_disc(resource.time.get());
-		show_arc_graph(&minkowski_disc, &mut gizmos);
+		ArcGraph::minkowski_arc(arc, resource.time.get())
+			.draw_gizmos(&mut gizmos, None);
 	}
 }
