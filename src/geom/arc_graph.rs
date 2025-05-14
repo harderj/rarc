@@ -110,7 +110,7 @@ impl ArcGraph {
 				let _idx3 = g.add_node(start_point_arc);
 				g.add_edge(_idx1, _idx2, end_point_arc.start_point());
 				g.add_edge(_idx2, _idx3, end_point_arc.end_point());
-				g.add_edge(_idx3, _idx2, start_point_arc.end_point());
+				g.add_edge(_idx3, _idx1, start_point_arc.end_point());
 			}
 		}
 		ArcGraph(g)
