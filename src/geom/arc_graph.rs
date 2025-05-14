@@ -2,6 +2,7 @@ use std::f32::consts::{FRAC_PI_2, PI};
 
 use bevy::{color::Color, gizmos::gizmos::Gizmos, math::Vec2};
 use derive_more::Deref;
+use itertools::Itertools;
 use petgraph::graph::{NodeIndex, UnGraph};
 
 use crate::{
@@ -29,12 +30,7 @@ impl DrawableWithGizmos for ArcGraph {
 }
 
 impl ArcGraph {
-	pub fn intersect(_other: &ArcGraph) -> Vec<(NodeIndex, NodeIndex, Vec2)> {
-		todo!()
-	}
-
 	pub fn minkowski_arc(arc: Arc, radius: f32) -> Self {
-		// consider to make this cleaner by changing circles into arcs
 		let mut g = UnGraph::<Arc, Vec2>::new_undirected();
 		let _idx1 = g.add_node(arc.with_radius(arc.radius + radius));
 		if radius.abs() < arc.radius.abs() {
@@ -88,5 +84,21 @@ impl ArcGraph {
 			}
 		}
 		ArcGraph(g)
+	}
+
+	pub fn intersect(
+		&self,
+		other: &ArcGraph,
+	) -> Vec<(NodeIndex, NodeIndex, Vec2)> {
+		let mut res = vec![];
+		for (i, j) in self.node_indices().cartesian_product(other.node_indices()) {
+			let (&a, &b) = (
+				self.node_weight(i).unwrap(), //
+				other.node_weight(j).unwrap(),
+			);
+			let ps = a.intersect(b);
+			ps.into_iter().for_each(|p| res.push((i, j, p)));
+		}
+		res
 	}
 }

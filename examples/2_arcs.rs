@@ -3,7 +3,10 @@ use std::f32::consts::PI;
 use bevy::{
 	DefaultPlugins,
 	app::{App, Startup, Update},
-	color::palettes::css::GREEN,
+	color::{
+		Color,
+		palettes::css::{GREEN, RED},
+	},
 	core_pipeline::core_2d::Camera2d,
 	ecs::{
 		resource::Resource,
@@ -69,6 +72,9 @@ fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
 		ms.iter().for_each(|m| {
 			m.draw_gizmos(&mut gizmos, Some(bevy::color::Color::Srgba(GREEN)))
 		});
-		// let [m1, m2] = ms; // todo
+		let [m1, m2] = &ms;
+		for (_, _, p) in m1.intersect(&m2) {
+			Circle::new(8.0, p).draw_gizmos(&mut gizmos, Some(Color::Srgba(RED)));
+		}
 	}
 }
