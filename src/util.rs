@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use std::f32::consts::{E, PI};
 
 use bevy::{
 	color::Color, ecs::resource::Resource, math::Vec2, reflect::Reflect,
@@ -19,7 +19,7 @@ impl FloatResource {
 }
 
 pub fn color_hash(seed: usize) -> Color {
-	Color::hsl(PI * (seed as f32) * 1000.0, 0.7, 0.7)
+	Color::hsl((E * PI * (seed as f32) * 1000.0) % 360.0, 0.8, 0.4)
 }
 
 impl Default for FloatResource {
