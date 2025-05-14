@@ -1,6 +1,6 @@
 use std::f32::consts::FRAC_PI_2;
 
-use derive_more::Deref;
+use derive_more::{Deref, DerefMut};
 
 use bevy::{
 	DefaultPlugins,
@@ -20,7 +20,7 @@ use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use rarc::geom::{arc::Arc, misc::DrawableWithGizmos};
 
-#[derive(Default, Deref, Reflect, Resource)]
+#[derive(Default, Deref, DerefMut, Reflect, Resource)]
 struct TimeResource(f32);
 
 fn main() {
@@ -36,15 +36,20 @@ fn main() {
 		.run();
 }
 
-fn setup(mut commands: Commands, mut arc: ResMut<Arc>) {
+fn setup(
+	mut commands: Commands,
+	mut arc: ResMut<Arc>,
+	mut time: ResMut<TimeResource>,
+) {
 	commands.spawn(Camera2d::default());
 	*arc =
 		Arc { span: FRAC_PI_2, mid: FRAC_PI_2, radius: 100.0, center: Vec2::ZERO };
+	**time = 110.0;
 }
 
 fn update(mut gizmos: Gizmos, arc: ResMut<Arc>, time: ResMut<TimeResource>) {
 	arc.draw_gizmos(&mut gizmos, Color::WHITE);
-	for x in arc.minkowski_disc(**time) {
+	for &x in arc.minkowski_disc(**time).node_weights() {
 		x.draw_gizmos(&mut gizmos, Color::Srgba(GREEN));
 	}
 }

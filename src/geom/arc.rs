@@ -1,4 +1,5 @@
-use std::{f32::consts::FRAC_PI_2, vec};
+use core::f32;
+use std::f32::consts::{FRAC_PI_2, PI};
 
 use bevy::{
 	color::Color,
@@ -7,11 +8,12 @@ use bevy::{
 	math::{Isometry2d, Rot2, Vec2, vec2},
 	reflect::Reflect,
 };
+use petgraph::graph::UnGraph;
 
 use crate::{
 	constants::{GENERAL_EPSILON, PIXEL_EPSILON},
 	geom::{circle::Circle, misc::DrawableWithGizmos},
-	math::{bend_to_abs_angle, midpoint},
+	math::{bend_to_abs_angle, counterclockwise_difference, midpoint},
 };
 
 static ARC_DRAW_SEGMENTS: u32 = 128;
@@ -43,9 +45,9 @@ impl DrawableWithGizmos for Arc {
 			let angle = (self.end_point() - self.start_point()).to_angle();
 			gizmos.linestrip_2d(
 				[
-					m + vec2(5.0, 5.0).rotate(Vec2::from_angle(angle)),
+					m + vec2(-5.0, 5.0).rotate(Vec2::from_angle(angle)),
 					m,
-					m + vec2(5.0, -5.0).rotate(Vec2::from_angle(angle)),
+					m + vec2(-5.0, -5.0).rotate(Vec2::from_angle(angle)),
 				],
 				color,
 			);
@@ -54,6 +56,17 @@ impl DrawableWithGizmos for Arc {
 }
 
 impl Arc {
+	pub fn from_angles(
+		start_angle: f32,
+		end_angle: f32,
+		radius: f32,
+		center: Vec2,
+	) -> Self {
+		let span = counterclockwise_difference(start_angle, end_angle);
+		let mid = start_angle + 0.5 * span;
+		Self { mid, span, radius, center }
+	}
+
 	pub fn with_radius(self, radius: f32) -> Self {
 		let mut copy = self;
 		copy.radius = radius;
@@ -86,14 +99,45 @@ impl Arc {
 		self.center + Vec2::from_angle(self.mid) * self.radius
 	}
 
-	pub fn minkowski_disc(self, radius: f32) -> Vec<Box<dyn DrawableWithGizmos>> {
+	pub fn minkowski_disc(self, radius: f32) -> UnGraph<Arc, Vec2> {
 		// consider to make this cleaner by changing circles into arcs
-		return vec![
-			Box::new(self.with_radius(self.radius + radius)),
-			Box::new(self.with_radius(self.radius - radius).with_span(-self.span)),
-			Box::new(Circle { radius, center: self.start_point() }),
-			Box::new(Circle { radius, center: self.end_point() }),
-		];
+		let mut g = UnGraph::<Arc, Vec2>::new_undirected();
+		let _idx1 = g.add_node(self.with_radius(self.radius + radius));
+		if radius.abs() < self.radius.abs() {
+			let _idx2 = g.add_node(Arc {
+				radius,
+				center: self.end_point(),
+				mid: self.end_angle() + FRAC_PI_2,
+				span: PI,
+			});
+			let _idx3 = g
+				.add_node(self.with_radius(self.radius - radius).with_span(-self.span));
+			let _idx4 = g.add_node(Arc {
+				radius,
+				center: self.start_point(),
+				mid: self.start_angle() - FRAC_PI_2,
+				span: PI,
+			});
+		} else {
+			if let Some(&intersection) = Circle::new(radius, self.start_point())
+				.intersect_circle(Circle::new(radius, self.end_point()))
+				.get(1)
+			{
+				let _idx2 = g.add_node(Arc::from_angles(
+					self.end_angle(),
+					(intersection - self.end_point()).to_angle(),
+					radius,
+					self.end_point(),
+				));
+				let _idx3 = g.add_node(Arc::from_angles(
+					(intersection - self.start_point()).to_angle(),
+					self.start_angle(),
+					radius,
+					self.start_point(),
+				));
+			}
+		}
+		g
 	}
 
 	pub fn params(self) -> [f32; 5] {
