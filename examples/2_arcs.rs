@@ -3,10 +3,7 @@ use std::f32::consts::PI;
 use bevy::{
 	DefaultPlugins,
 	app::{App, Startup, Update},
-	color::{
-		Color,
-		palettes::css::{GREEN, RED},
-	},
+	color::palettes::css::GREEN,
 	core_pipeline::core_2d::Camera2d,
 	ecs::{
 		resource::Resource,
@@ -33,6 +30,8 @@ struct CustomResource {
 	time: FloatResource,
 	show_original: bool,
 	show_minkowski: bool,
+	show_intersections: bool,
+	show_sum: bool,
 }
 
 fn main() {
@@ -52,9 +51,11 @@ fn setup(mut commands: Commands, mut resource: ResMut<CustomResource>) {
 		Arc { mid: 3.0, span: PI, radius: 130.0, ..Default::default() };
 	resource.arc2 =
 		Arc { mid: -9.0, span: PI, radius: 150.0, center: Vec2::X * 30.0 };
-	resource.show_original = true;
-	resource.show_minkowski = true;
 	resource.time = FloatResource { scale: 10.0, value: 5.0 };
+	resource.show_original = true;
+	resource.show_minkowski = false;
+	resource.show_intersections = true;
+	resource.show_sum = true;
 }
 
 fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
@@ -66,15 +67,21 @@ fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
 			.into_iter()
 			.for_each(|p| Circle::new(5.0, p).draw_gizmos(&mut gizmos, None));
 	}
+	let ms =
+		[arc1, arc2].map(|a| ArcGraph::minkowski_arc(a, resource.time.get()));
 	if resource.show_minkowski {
-		let ms =
-			[arc1, arc2].map(|a| ArcGraph::minkowski_arc(a, resource.time.get()));
 		ms.iter().for_each(|m| {
 			m.draw_gizmos(&mut gizmos, Some(bevy::color::Color::Srgba(GREEN)))
 		});
-		let [m1, m2] = &ms;
+	}
+	let [m1, m2] = &ms;
+	if resource.show_intersections {
 		for (_, _, p) in m1.intersect(&m2) {
-			Circle::new(8.0, p).draw_gizmos(&mut gizmos, Some(Color::Srgba(RED)));
+			Circle::new(9.0, p).draw_gizmos(&mut gizmos, None);
 		}
+	}
+	if resource.show_sum {
+		let m = m1.clone() + m2.clone();
+		m.draw_gizmos(&mut gizmos, None);
 	}
 }

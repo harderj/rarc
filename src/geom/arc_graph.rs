@@ -1,30 +1,60 @@
-use std::f32::consts::{FRAC_PI_2, PI};
+use std::{
+	f32::consts::{FRAC_PI_2, PI},
+	ops::Add,
+};
 
-use bevy::{color::Color, gizmos::gizmos::Gizmos, math::Vec2};
-use derive_more::Deref;
+use bevy::{
+	color::Color, gizmos::gizmos::Gizmos, math::Vec2,
+	platform::collections::HashMap,
+};
+use derive_more::{Deref, DerefMut};
 use itertools::Itertools;
-use petgraph::graph::{NodeIndex, UnGraph};
+use petgraph::{
+	graph::{NodeIndex, UnGraph},
+	visit::EdgeRef,
+};
 
 use crate::{
 	geom::{arc::Arc, circle::Circle, misc::DrawableWithGizmos},
 	util::color_hash,
 };
 
-#[derive(Clone, Deref)]
+#[derive(Clone, Deref, DerefMut)]
 pub struct ArcGraph(pub UnGraph<Arc, Vec2>);
+
+impl Add for ArcGraph {
+	type Output = ArcGraph;
+
+	fn add(mut self, rhs: Self) -> Self::Output {
+		let intersections = self.intersect(&rhs);
+		let mut node_index_map = HashMap::new();
+		for i in rhs.node_indices() {
+			let &arc = rhs.node_weight(i).unwrap();
+			let ni = self.add_node(arc);
+			node_index_map.insert(i, ni);
+		}
+		for eref in rhs.edge_references() {
+			let (i, j, p) = (eref.source(), eref.target(), eref.weight());
+			self.add_edge(node_index_map[&i], node_index_map[&j], *p);
+		}
+		for (i, j, p) in intersections {
+			self.add_edge(i, node_index_map[&j], p);
+		}
+		self
+	}
+}
 
 impl DrawableWithGizmos for ArcGraph {
 	fn draw_gizmos(&self, gizmos: &mut Gizmos, color: Option<Color>) {
+		let color_f = |i: NodeIndex| Some(color.unwrap_or(color_hash(i.index())));
 		for i in self.node_indices() {
 			let arc = self.node_weight(i).unwrap();
-			let color = color.unwrap_or(color_hash(i.index()));
-			arc.draw_gizmos(gizmos, Some(color));
+			arc.draw_gizmos(gizmos, color_f(i));
 		}
-		for i in self.edge_indices() {
-			let color = color.unwrap_or(color_hash(i.index()));
-			let &p = self.edge_weight(i).unwrap();
-			Circle::new(4.0, p).draw_gizmos(gizmos, Some(color));
-			Circle::new(6.0, p).draw_gizmos(gizmos, Some(color));
+		for eref in self.edge_references() {
+			let (i, j, &p) = (eref.source(), eref.target(), eref.weight());
+			Circle::new(3.0, p).draw_gizmos(gizmos, color_f(i));
+			Circle::new(6.0, p).draw_gizmos(gizmos, color_f(j));
 		}
 	}
 }
