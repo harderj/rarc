@@ -114,11 +114,14 @@ impl Arc {
 	}
 
 	pub fn distance_to_point(self, point: Vec2) -> f32 {
+		let mut ds = vec![
+			point.distance(self.start_point()),
+			point.distance(self.end_point()),
+		];
 		if self.in_span(point) {
-			(point.distance(self.center) - self.radius).abs()
-		} else {
-			point.distance(self.start_point()).min(point.distance(self.end_point()))
+			ds.push((point.distance(self.center) - self.radius).abs());
 		}
+		*ds.iter().min_by(|a, b| a.total_cmp(b)).unwrap()
 	}
 
 	pub fn start_angle(self) -> f32 {

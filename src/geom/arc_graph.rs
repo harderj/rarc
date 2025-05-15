@@ -83,8 +83,13 @@ impl ArcGraph {
 		edge_ids_to_remove.iter().for_each(|&i| {
 			sum.remove_edge(i);
 		});
-		sum
+		// for eref in sum.edge_references() {
+		// 	let (i, j, &p) = (eref.source(), eref.target(), eref.weight());
+		// 	let (&ai, &aj) =
+		// 		(sum.node_weight(i).unwrap(), sum.node_weight(j).unwrap());
+		// }
 		// todo: pick all edges and move one along direction
+		sum
 	}
 
 	pub fn minkowski_arc(arc: Arc, radius: f32) -> Self {
