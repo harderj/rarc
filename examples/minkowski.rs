@@ -3,7 +3,7 @@ use std::f32::consts::PI;
 use bevy::{
 	DefaultPlugins,
 	app::{App, Startup, Update},
-	color::Color,
+	color::{Color, palettes::css::GRAY},
 	core_pipeline::core_2d::Camera2d,
 	ecs::{
 		resource::Resource,
@@ -16,10 +16,12 @@ use bevy::{
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use bevy_pancam::{PanCam, PanCamPlugin};
+use petgraph::{Direction::Outgoing, graph::EdgeReference, visit::EdgeRef};
 use rarc::{
 	geom::{
 		arc::Arc, arc_graph::ArcGraph, circle::Circle, misc::DrawableWithGizmos,
 	},
+	math::{diff_ccw, diff_cw},
 	util::FloatResource,
 };
 
@@ -30,6 +32,7 @@ struct CustomResource {
 	radius: FloatResource,
 	show_original: bool,
 	show_minkowski: bool,
+	n: usize,
 }
 
 fn main() {
@@ -71,5 +74,31 @@ fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
 	if resource.show_minkowski {
 		sum.draw_gizmos(&mut gizmos, None);
 		m.draw_gizmos(&mut gizmos, Some(Color::WHITE));
+	}
+	if let Some(eref) = sum.edge_references().nth(resource.n) {
+		let (target_id, &p) = (eref.target(), eref.weight());
+		Circle::new(12.0, p).draw_gizmos(&mut gizmos, Some(Color::WHITE));
+		let &target_arc = sum.node_weight(target_id).unwrap();
+		target_arc.draw_gizmos(&mut gizmos, Some(Color::Srgba(GRAY)));
+		let angle_diff_func =
+			if target_arc.span < 0.0 { diff_cw } else { diff_ccw };
+		let c = target_arc.center;
+		let current_angle = (p - c).to_angle();
+		let edge_to_order = |e: EdgeReference<Vec2>| {
+			let e_angle = (e.weight() - c).to_angle();
+			angle_diff_func(current_angle, e_angle)
+		};
+		let mut next_outgoing: Vec<(EdgeReference<Vec2>, f32)> = sum
+			.edges_directed(target_id, Outgoing)
+			.filter(|e| e.id() != eref.id())
+			.map(|e| (e, edge_to_order(e)))
+			.collect();
+		next_outgoing.sort_by(|(_, x), (_, y)| x.total_cmp(y));
+		if let Some((next, _x)) = next_outgoing.first() {
+			gizmos.arrow_2d(p, *next.weight(), Color::WHITE);
+		}
+		// for (e, _) in next_outgoing {
+		// 	gizmos.arrow_2d(p, *e.weight(), Color::BLACK);
+		// }
 	}
 }

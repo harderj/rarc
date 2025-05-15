@@ -13,8 +13,8 @@ use crate::{
 	constants::{GENERAL_EPSILON, PIXEL_EPSILON},
 	geom::{circle::Circle, misc::DrawableWithGizmos},
 	math::{
-		bend_to_abs_angle, between_clockwise, between_counterclockwise,
-		clockwise_difference, counterclockwise_difference, midpoint,
+		bend_to_abs_angle, diff_ccw, diff_cw, is_between_ccw, is_between_cw,
+		midpoint,
 	},
 };
 
@@ -69,7 +69,7 @@ impl Arc {
 		radius: f32,
 		center: Vec2,
 	) -> Self {
-		let span = -clockwise_difference(start_angle, end_angle);
+		let span = -diff_cw(start_angle, end_angle);
 		let mid = start_angle + 0.5 * span;
 		Self { mid, span, radius, center }
 	}
@@ -80,7 +80,7 @@ impl Arc {
 		radius: f32,
 		center: Vec2,
 	) -> Self {
-		let span = counterclockwise_difference(start_angle, end_angle);
+		let span = diff_ccw(start_angle, end_angle);
 		let mid = start_angle + 0.5 * span;
 		Self { mid, span, radius, center }
 	}
@@ -155,11 +155,7 @@ impl Arc {
 	}
 
 	pub fn in_span(self, point: Vec2) -> bool {
-		let f = if self.span < 0.0 {
-			between_clockwise
-		} else {
-			between_counterclockwise
-		};
+		let f = if self.span < 0.0 { is_between_cw } else { is_between_ccw };
 		f((point - self.center).to_angle(), self.start_angle(), self.end_angle())
 	}
 

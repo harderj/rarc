@@ -7,20 +7,20 @@ pub fn approximates(a: f32, b: f32, margin: f32) -> bool {
 }
 
 pub fn angle_within(a: f32, min: f32, max: f32) -> bool {
-	let min_ = between_0_2_pi(min);
-	let max_ = between_0_2_pi(max);
-	let a_ = between_0_2_pi(a);
+	let min_ = normalize_radians(min);
+	let max_ = normalize_radians(max);
+	let a_ = normalize_radians(a);
 	if min_ < max_ { min_ < a_ && a_ < max_ } else { a_ < max_ || a_ > min_ }
 }
 
-pub fn between_0_2_pi(a: f32) -> f32 {
+pub fn normalize_radians(a: f32) -> f32 {
 	(2.0 * PI + (2.0 * PI + a) % (2.0 * PI)) % (2.0 * PI)
 }
 
-pub fn between_clockwise(angle: f32, from: f32, to: f32) -> bool {
-	let angle_ = between_0_2_pi(angle);
-	let from_ = between_0_2_pi(from);
-	let to_ = between_0_2_pi(to);
+pub fn is_between_cw(angle: f32, from: f32, to: f32) -> bool {
+	let angle_ = normalize_radians(angle);
+	let from_ = normalize_radians(from);
+	let to_ = normalize_radians(to);
 	if from_ < to_ {
 		angle_ <= from_ || angle_ > to_
 	} else {
@@ -28,16 +28,16 @@ pub fn between_clockwise(angle: f32, from: f32, to: f32) -> bool {
 	}
 }
 
-pub fn between_counterclockwise(angle: f32, from: f32, to: f32) -> bool {
-	!between_clockwise(angle, from, to)
+pub fn is_between_ccw(angle: f32, from: f32, to: f32) -> bool {
+	!is_between_cw(angle, from, to)
 }
 
-pub fn clockwise_difference(a: f32, b: f32) -> f32 {
-	between_0_2_pi(between_0_2_pi(a) - between_0_2_pi(b))
+pub fn diff_cw(from: f32, to: f32) -> f32 {
+	normalize_radians(normalize_radians(from) - normalize_radians(to))
 }
 
-pub fn counterclockwise_difference(a: f32, b: f32) -> f32 {
-	between_0_2_pi(between_0_2_pi(b) - between_0_2_pi(a))
+pub fn diff_ccw(from: f32, to: f32) -> f32 {
+	normalize_radians(normalize_radians(to) - normalize_radians(from))
 }
 
 pub fn midpoint(a: Vec2, b: Vec2) -> Vec2 {
