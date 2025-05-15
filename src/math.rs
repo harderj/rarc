@@ -61,9 +61,8 @@ pub fn second_deg_eq(a: f32, b: f32, c: f32) -> Vec<f32> {
 	}
 }
 
-pub fn angle_counter_clockwise(a: &Vec2, b: &Vec2) -> f32 {
-	(Mat2::from_cols(*a, *b).determinant().atan2(a.dot(*b)) + 2.0 * PI)
-		% (2.0 * PI)
+pub fn angle_counter_clockwise(a: Vec2, b: Vec2) -> f32 {
+	(Mat2::from_cols(a, b).determinant().atan2(a.dot(b)) + 2.0 * PI) % (2.0 * PI)
 }
 
 pub fn bool_to_sign(b: bool) -> f32 {

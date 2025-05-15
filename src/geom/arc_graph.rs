@@ -5,13 +5,15 @@ use std::{
 };
 
 use bevy::{
-	color::Color, gizmos::gizmos::Gizmos, math::Vec2,
+	color::Color,
+	gizmos::gizmos::Gizmos,
+	math::{Mat2, Vec2},
 	platform::collections::HashMap,
 };
 use derive_more::{Deref, DerefMut};
 use itertools::Itertools;
 use petgraph::{
-	graph::{NodeIndex, UnGraph},
+	graph::{Graph, NodeIndex},
 	visit::EdgeRef,
 };
 
@@ -22,7 +24,7 @@ use crate::{
 };
 
 #[derive(Clone, Default, Deref, DerefMut)]
-pub struct ArcGraph(pub UnGraph<Arc, Vec2>);
+pub struct ArcGraph(pub Graph<Arc, Vec2>);
 
 impl Add for ArcGraph {
 	type Output = ArcGraph;
@@ -40,7 +42,11 @@ impl Add for ArcGraph {
 			self.add_edge(node_index_map[&i], node_index_map[&j], *p);
 		}
 		for (i, j, p) in intersections {
-			self.add_edge(i, node_index_map[&j], p);
+			let j = node_index_map[&j];
+			let (a, b) = (self.node_weight(i).unwrap(), self.node_weight(j).unwrap());
+			let d = Mat2::from_cols(p - a.center, p - b.center).determinant();
+			let (i_, j_) = if a.span * b.span * d > 0.0 { (j, i) } else { (i, j) };
+			self.add_edge(i_, j_, p);
 		}
 		self
 	}
@@ -68,7 +74,7 @@ impl DrawableWithGizmos for ArcGraph {
 }
 
 impl ArcGraph {
-	pub fn minkowski(arcs: Vec<Arc>, radius: f32) -> Self {
+	pub fn minkowski(arcs: Vec<Arc>, radius: f32) -> (Self, Self) {
 		let m_arcs = arcs.iter().map(|&a| Self::minkowski_arc(a, radius));
 		let mut sum: ArcGraph = m_arcs.sum();
 		let mut edge_ids_to_remove = vec![];
@@ -76,25 +82,21 @@ impl ArcGraph {
 			let (i, &p) = (eref.id(), eref.weight());
 			for arc in &arcs {
 				if arc.distance_to_point(p) - radius < -GENERAL_EPSILON {
-					edge_ids_to_remove.push(i)
+					edge_ids_to_remove.push(i);
 				}
 			}
 		}
 		edge_ids_to_remove.iter().for_each(|&i| {
 			sum.remove_edge(i);
 		});
-		// for eref in sum.edge_references() {
-		// 	let (i, j, &p) = (eref.source(), eref.target(), eref.weight());
-		// 	let (&ai, &aj) =
-		// 		(sum.node_weight(i).unwrap(), sum.node_weight(j).unwrap());
-		// }
+		let g = ArcGraph::default();
 		// todo: pick all edges and move one along direction
-		sum
+		(sum, g)
 	}
 
 	pub fn minkowski_arc(arc: Arc, radius: f32) -> Self {
-		let mut g = UnGraph::<Arc, Vec2>::new_undirected();
-		let _idx1 = g.add_node(arc.with_radius(arc.radius + radius));
+		let mut g = Graph::<Arc, Vec2>::new();
+		let idx1 = g.add_node(arc.with_radius(arc.radius + radius));
 		if radius.abs() < arc.radius.abs() {
 			let end_point_arc = Arc {
 				radius,
@@ -108,14 +110,14 @@ impl ArcGraph {
 				mid: arc.start_angle() - FRAC_PI_2 * arc.span.signum(),
 				span: PI * arc.span.signum(),
 			};
-			let _idx2 = g.add_node(end_point_arc);
-			let _idx3 =
+			let idx2 = g.add_node(end_point_arc);
+			let idx3 =
 				g.add_node(arc.with_radius(arc.radius - radius).with_span(-arc.span));
-			let _idx4 = g.add_node(start_point_arc);
-			g.add_edge(_idx1, _idx2, end_point_arc.start_point());
-			g.add_edge(_idx2, _idx3, end_point_arc.end_point());
-			g.add_edge(_idx3, _idx4, start_point_arc.start_point());
-			g.add_edge(_idx4, _idx1, start_point_arc.end_point());
+			let idx4 = g.add_node(start_point_arc);
+			g.add_edge(idx1, idx2, end_point_arc.start_point());
+			g.add_edge(idx2, idx3, end_point_arc.end_point());
+			g.add_edge(idx3, idx4, start_point_arc.start_point());
+			g.add_edge(idx4, idx1, start_point_arc.end_point());
 		} else {
 			if let Some(&intersection) = Circle::new(radius, arc.start_point())
 				.intersect(Circle::new(radius, arc.end_point()))
@@ -138,11 +140,11 @@ impl ArcGraph {
 					radius,
 					arc.start_point(),
 				);
-				let _idx2 = g.add_node(end_point_arc);
-				let _idx3 = g.add_node(start_point_arc);
-				g.add_edge(_idx1, _idx2, end_point_arc.start_point());
-				g.add_edge(_idx2, _idx3, end_point_arc.end_point());
-				g.add_edge(_idx3, _idx1, start_point_arc.end_point());
+				let idx2 = g.add_node(end_point_arc);
+				let idx3 = g.add_node(start_point_arc);
+				g.add_edge(idx1, idx2, end_point_arc.start_point());
+				g.add_edge(idx2, idx3, end_point_arc.end_point());
+				g.add_edge(idx3, idx1, start_point_arc.end_point());
 			}
 		}
 		ArcGraph(g)
@@ -158,8 +160,7 @@ impl ArcGraph {
 				self.node_weight(i).unwrap(), //
 				other.node_weight(j).unwrap(),
 			);
-			let ps = a.intersect(b);
-			ps.into_iter().for_each(|p| res.push((i, j, p)));
+			a.intersect(b).iter().for_each(|&p| res.push((i, j, p)));
 		}
 		res
 	}

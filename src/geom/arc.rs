@@ -167,4 +167,22 @@ impl Arc {
 		let ps = self.to_circle().intersect(other.to_circle());
 		ps.into_iter().filter(|&p| self.in_span(p) && other.in_span(p)).collect()
 	}
+
+	pub fn with_start_angle(self, start_angle: f32) -> Self {
+		let f = if self.span < 0.0 {
+			Self::from_angles_clockwise
+		} else {
+			Self::from_angles_counterclockwise
+		};
+		f(start_angle, self.end_angle(), self.radius, self.center)
+	}
+
+	pub fn with_end_angle(self, end_angle: f32) -> Self {
+		let f = if self.span < 0.0 {
+			Self::from_angles_clockwise
+		} else {
+			Self::from_angles_counterclockwise
+		};
+		f(self.start_angle(), end_angle, self.radius, self.center)
+	}
 }

@@ -3,6 +3,7 @@ use std::f32::consts::PI;
 use bevy::{
 	DefaultPlugins,
 	app::{App, Startup, Update},
+	color::Color,
 	core_pipeline::core_2d::Camera2d,
 	ecs::{
 		resource::Resource,
@@ -52,7 +53,7 @@ fn setup(mut commands: Commands, mut resource: ResMut<CustomResource>) {
 	resource.arc2 =
 		Arc { mid: -9.0, span: PI, radius: 150.0, center: Vec2::X * 30.0 };
 	resource.radius = FloatResource { scale: 10.0, value: 5.0 };
-	resource.show_original = true;
+	resource.show_original = false;
 	resource.show_minkowski = true;
 }
 
@@ -66,8 +67,9 @@ fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
 			.into_iter()
 			.for_each(|p| Circle::new(5.0, p).draw_gizmos(&mut gizmos, None));
 	}
-	let m = ArcGraph::minkowski(arcs, resource.radius.get());
+	let (sum, m) = ArcGraph::minkowski(arcs, resource.radius.get());
 	if resource.show_minkowski {
-		m.draw_gizmos(&mut gizmos, None);
+		sum.draw_gizmos(&mut gizmos, None);
+		m.draw_gizmos(&mut gizmos, Some(Color::WHITE));
 	}
 }
