@@ -1,5 +1,6 @@
 use std::{
 	f32::consts::{FRAC_PI_2, PI},
+	iter::Sum,
 	ops::Add,
 };
 
@@ -15,11 +16,12 @@ use petgraph::{
 };
 
 use crate::{
+	constants::GENERAL_EPSILON,
 	geom::{arc::Arc, circle::Circle, misc::DrawableWithGizmos},
 	util::color_hash,
 };
 
-#[derive(Clone, Deref, DerefMut)]
+#[derive(Clone, Default, Deref, DerefMut)]
 pub struct ArcGraph(pub UnGraph<Arc, Vec2>);
 
 impl Add for ArcGraph {
@@ -44,6 +46,12 @@ impl Add for ArcGraph {
 	}
 }
 
+impl Sum for ArcGraph {
+	fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+		iter.fold(ArcGraph::default(), |a, b| a + b)
+	}
+}
+
 impl DrawableWithGizmos for ArcGraph {
 	fn draw_gizmos(&self, gizmos: &mut Gizmos, color: Option<Color>) {
 		let color_f = |i: NodeIndex| Some(color.unwrap_or(color_hash(i.index())));
@@ -60,6 +68,25 @@ impl DrawableWithGizmos for ArcGraph {
 }
 
 impl ArcGraph {
+	pub fn minkowski(arcs: Vec<Arc>, radius: f32) -> Self {
+		let m_arcs = arcs.iter().map(|&a| Self::minkowski_arc(a, radius));
+		let mut sum: ArcGraph = m_arcs.sum();
+		let mut edge_ids_to_remove = vec![];
+		for eref in sum.edge_references() {
+			let (i, &p) = (eref.id(), eref.weight());
+			for arc in &arcs {
+				if arc.distance_to_point(p) - radius < -GENERAL_EPSILON {
+					edge_ids_to_remove.push(i)
+				}
+			}
+		}
+		edge_ids_to_remove.iter().for_each(|&i| {
+			sum.remove_edge(i);
+		});
+		sum
+		// todo: pick all edges and move one along direction
+	}
+
 	pub fn minkowski_arc(arc: Arc, radius: f32) -> Self {
 		let mut g = UnGraph::<Arc, Vec2>::new_undirected();
 		let _idx1 = g.add_node(arc.with_radius(arc.radius + radius));

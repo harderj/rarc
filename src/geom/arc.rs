@@ -22,10 +22,15 @@ static ARC_DRAW_SEGMENTS: u32 = 128;
 
 #[derive(Clone, Component, Copy, Debug, Default, Reflect, Resource)]
 pub struct Arc {
+	/// Angle in radians to middle of arc.
 	pub mid: f32,
+	/// Angle spanned in radians.
+	/// Positive values means endpoint is counter-clockwise [span] radians from startpoint.
+	/// Negative values means endpoint is clockwise [span] radians from startpoint.
 	pub span: f32,
+	/// Radius of underlying circle.
 	pub radius: f32,
-	/// Center of circle
+	/// Center of underlying circle.
 	pub center: Vec2,
 }
 
@@ -106,6 +111,14 @@ impl Arc {
 		let mut copy = self;
 		copy.span = span;
 		copy
+	}
+
+	pub fn distance_to_point(self, point: Vec2) -> f32 {
+		if self.in_span(point) {
+			(point.distance(self.center) - self.radius).abs()
+		} else {
+			point.distance(self.start_point()).min(point.distance(self.end_point()))
+		}
 	}
 
 	pub fn start_angle(self) -> f32 {
