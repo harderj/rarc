@@ -63,7 +63,7 @@ impl DrawableWithGizmos for Arc {
 }
 
 impl Arc {
-	pub fn from_angles_clockwise(
+	pub fn from_angles_cw(
 		start_angle: f32,
 		end_angle: f32,
 		radius: f32,
@@ -74,7 +74,7 @@ impl Arc {
 		Self { mid, span, radius, center }
 	}
 
-	pub fn from_angles_counterclockwise(
+	pub fn from_angles_ccw(
 		start_angle: f32,
 		end_angle: f32,
 		radius: f32,
@@ -166,18 +166,18 @@ impl Arc {
 
 	pub fn with_start_angle(self, start_angle: f32) -> Self {
 		let f = if self.span < 0.0 {
-			Self::from_angles_clockwise
+			Self::from_angles_cw
 		} else {
-			Self::from_angles_counterclockwise
+			Self::from_angles_ccw
 		};
 		f(start_angle, self.end_angle(), self.radius, self.center)
 	}
 
 	pub fn with_end_angle(self, end_angle: f32) -> Self {
 		let f = if self.span < 0.0 {
-			Self::from_angles_clockwise
+			Self::from_angles_cw
 		} else {
-			Self::from_angles_counterclockwise
+			Self::from_angles_ccw
 		};
 		f(self.start_angle(), end_angle, self.radius, self.center)
 	}

@@ -94,11 +94,22 @@ fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
 			.map(|e| (e, edge_to_order(e)))
 			.collect();
 		next_outgoing.sort_by(|(_, x), (_, y)| x.total_cmp(y));
-		if let Some((next, _x)) = next_outgoing.first() {
+		if let Some((next, x)) = next_outgoing.first() {
 			gizmos.arrow_2d(p, *next.weight(), Color::WHITE);
+
+			let arc_init_func = if target_arc.span < 0.0 {
+				Arc::from_angles_cw
+			} else {
+				Arc::from_angles_ccw
+			};
+
+			let arc = arc_init_func(
+				current_angle,
+				current_angle + x * target_arc.span.signum(),
+				target_arc.radius,
+				target_arc.center,
+			);
+			arc.draw_gizmos(&mut gizmos, Some(Color::WHITE));
 		}
-		// for (e, _) in next_outgoing {
-		// 	gizmos.arrow_2d(p, *e.weight(), Color::BLACK);
-		// }
 	}
 }

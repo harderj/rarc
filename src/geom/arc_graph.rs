@@ -124,9 +124,9 @@ impl ArcGraph {
 				.get((0.5 * (arc.span.signum() + 1.0)) as usize)
 			{
 				let f = if arc.span < 0.0 {
-					Arc::from_angles_clockwise
+					Arc::from_angles_cw
 				} else {
-					Arc::from_angles_counterclockwise
+					Arc::from_angles_ccw
 				};
 				let end_point_arc = f(
 					arc.end_angle(),
