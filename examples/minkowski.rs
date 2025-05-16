@@ -3,7 +3,7 @@ use std::f32::consts::PI;
 use bevy::{
 	DefaultPlugins,
 	app::{App, Startup, Update},
-	color::{Color, palettes::css::GRAY},
+	color::Color,
 	core_pipeline::core_2d::Camera2d,
 	ecs::{
 		resource::Resource,
@@ -16,12 +16,8 @@ use bevy::{
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use bevy_pancam::{PanCam, PanCamPlugin};
-use petgraph::{Direction::Outgoing, graph::EdgeReference, visit::EdgeRef};
 use rarc::{
-	geom::{
-		arc::Arc, arc_graph::ArcGraph, circle::Circle, misc::DrawableWithGizmos,
-	},
-	math::{diff_ccw, diff_cw},
+	geom::{arc::Arc, arc_graph::ArcGraph, misc::DrawableWithGizmos},
 	util::FloatResource,
 };
 
@@ -31,6 +27,7 @@ struct CustomResource {
 	arc2: Arc,
 	radius: FloatResource,
 	show_original: bool,
+	show_minkowski_debug: bool,
 	show_minkowski: bool,
 	n: usize,
 }
@@ -56,7 +53,8 @@ fn setup(mut commands: Commands, mut resource: ResMut<CustomResource>) {
 	resource.arc2 =
 		Arc { mid: -9.0, span: PI, radius: 150.0, center: Vec2::X * 30.0 };
 	resource.radius = FloatResource { scale: 10.0, value: 5.0 };
-	resource.show_original = false;
+	resource.show_original = true;
+	resource.show_minkowski_debug = false;
 	resource.show_minkowski = true;
 }
 
@@ -64,52 +62,18 @@ fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
 	let (arc1, arc2) = (resource.arc1, resource.arc2);
 	let arcs = vec![arc1, arc2];
 	if resource.show_original {
-		[arc1, arc2].map(|a| a.draw_gizmos(&mut gizmos, None));
-		arc1
-			.intersect(arc2)
+		[arc1, arc2].map(|a| a.draw_gizmos(&mut gizmos, Some(Color::BLACK)));
+	}
+	let radius = resource.radius.get();
+	if resource.show_minkowski_debug {
+		let sum: ArcGraph = [arc1, arc2]
+			.map(|a| ArcGraph::minkowski_arc(a, radius))
 			.into_iter()
-			.for_each(|p| Circle::new(5.0, p).draw_gizmos(&mut gizmos, None));
-	}
-	let (sum, m) = ArcGraph::minkowski(arcs, resource.radius.get());
-	if resource.show_minkowski {
+			.sum();
 		sum.draw_gizmos(&mut gizmos, None);
-		m.draw_gizmos(&mut gizmos, Some(Color::WHITE));
 	}
-	if let Some(eref) = sum.edge_references().nth(resource.n) {
-		let (target_id, &p) = (eref.target(), eref.weight());
-		Circle::new(12.0, p).draw_gizmos(&mut gizmos, Some(Color::WHITE));
-		let &target_arc = sum.node_weight(target_id).unwrap();
-		target_arc.draw_gizmos(&mut gizmos, Some(Color::Srgba(GRAY)));
-		let angle_diff_func =
-			if target_arc.span < 0.0 { diff_cw } else { diff_ccw };
-		let c = target_arc.center;
-		let current_angle = (p - c).to_angle();
-		let edge_to_order = |e: EdgeReference<Vec2>| {
-			let e_angle = (e.weight() - c).to_angle();
-			angle_diff_func(current_angle, e_angle)
-		};
-		let mut next_outgoing: Vec<(EdgeReference<Vec2>, f32)> = sum
-			.edges_directed(target_id, Outgoing)
-			.filter(|e| e.id() != eref.id())
-			.map(|e| (e, edge_to_order(e)))
-			.collect();
-		next_outgoing.sort_by(|(_, x), (_, y)| x.total_cmp(y));
-		if let Some((next, x)) = next_outgoing.first() {
-			gizmos.arrow_2d(p, *next.weight(), Color::WHITE);
-
-			let arc_init_func = if target_arc.span < 0.0 {
-				Arc::from_angles_cw
-			} else {
-				Arc::from_angles_ccw
-			};
-
-			let arc = arc_init_func(
-				current_angle,
-				current_angle + x * target_arc.span.signum(),
-				target_arc.radius,
-				target_arc.center,
-			);
-			arc.draw_gizmos(&mut gizmos, Some(Color::WHITE));
-		}
+	if resource.show_minkowski {
+		let m = ArcGraph::minkowski(arcs, radius);
+		m.draw_gizmos(&mut gizmos, Some(Color::WHITE));
 	}
 }
