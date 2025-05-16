@@ -13,13 +13,14 @@ and makes a boundary around them at this distance.
 
 The problem is basically to find the boundary of a
 [*minkowski sum*](https://en.wikipedia.org/wiki/Minkowski_addition)
-of 2D shapes $A$ and $B$, where $A$ is a disc with radius $r$ and $B$ is a union of arcs.
+of sets $A, B \subseteq \mathbb{R}^2$, in the special case where
+where $A$ is a disc with radius $r$ and $B$ is a union of arcs.
 That is, we want to find the set
 
 $` \delta B_r = \left\{ x \in \mathbb{R}^2 \;|\; \min_{y \in B} d(x, y) = r \right\}`$
 
 I claim that this set can again be described as a union of arcs,
-and we want to find a list of (disjoint) arcs that make up this union.
+and we want to find a list of arcs (preferably disjoint) that make up this union.
 
 ### Setup
 

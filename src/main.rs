@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use std::{default::Default, f32::consts::PI};
 
 use bevy::{
 	DefaultPlugins,
@@ -11,7 +11,10 @@ use bevy::{
 	},
 	gizmos::gizmos::Gizmos,
 	math::Vec2,
+	prelude::PluginGroup,
 	reflect::Reflect,
+	utils::default,
+	window::{Window, WindowPlugin},
 };
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
@@ -60,7 +63,16 @@ impl Default for CustomResource {
 
 fn main() {
 	App::new()
-		.add_plugins((DefaultPlugins, PanCamPlugin::default()))
+		.add_plugins((
+			DefaultPlugins.set(WindowPlugin {
+				primary_window: Some(Window {
+					fit_canvas_to_parent: true,
+					..default()
+				}),
+				..default()
+			}),
+			PanCamPlugin::default(),
+		))
 		.init_resource::<CustomResource>()
 		.add_plugins(EguiPlugin { enable_multipass_for_primary_context: true })
 		.add_plugins(ResourceInspectorPlugin::<CustomResource>::new())
