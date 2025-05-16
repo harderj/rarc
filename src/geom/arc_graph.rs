@@ -8,13 +8,13 @@ use bevy::{
 	color::Color,
 	gizmos::gizmos::Gizmos,
 	math::{Mat2, Vec2},
-	platform::collections::HashMap,
+	platform::collections::{HashMap, HashSet},
 };
 use derive_more::{Deref, DerefMut};
 use itertools::Itertools;
 use petgraph::{
 	Direction::Outgoing,
-	graph::{EdgeReference, Graph, NodeIndex},
+	graph::{EdgeIndex, EdgeReference, Graph, NodeIndex},
 	visit::EdgeRef,
 };
 
@@ -76,21 +76,32 @@ impl DrawableWithGizmos for ArcGraph {
 }
 
 impl ArcGraph {
+	pub fn remove_edges(&mut self, ids: HashSet<EdgeIndex>) {
+		let mut edges_to_keep = vec![];
+		let ids_to_keep: HashSet<EdgeIndex> =
+			&self.edge_indices().collect::<HashSet<EdgeIndex>>() - &ids;
+		ids_to_keep.iter().unique().for_each(|&i| {
+			let e = self.edge_references().find(|e| e.id() == i).unwrap();
+			edges_to_keep.push((e.source(), e.target(), *e.weight()));
+		});
+		self.clear_edges();
+		self.extend_with_edges(edges_to_keep);
+	}
+
 	pub fn minkowski(arcs: Vec<Arc>, radius: f32) -> Self {
 		let m_arcs = arcs.iter().map(|&a| Self::minkowski_arc(a, radius));
 		let mut sum: ArcGraph = m_arcs.sum();
-		let mut edge_ids_to_remove = vec![];
+		let mut edge_ids_to_remove = HashSet::new();
 		for eref in sum.edge_references() {
 			let (i, &p) = (eref.id(), eref.weight());
-			for arc in &arcs {
+			for &arc in arcs.iter() {
 				if arc.distance_to_point(p) - radius < -GENERAL_EPSILON {
-					edge_ids_to_remove.push(i);
+					edge_ids_to_remove.insert(i);
+					continue;
 				}
 			}
 		}
-		edge_ids_to_remove.iter().for_each(|&i| {
-			sum.remove_edge(i);
-		});
+		sum.remove_edges(edge_ids_to_remove);
 		let mut g = ArcGraph::default();
 		for eref in sum.edge_references() {
 			let (target_id, &p) = (eref.target(), eref.weight());
