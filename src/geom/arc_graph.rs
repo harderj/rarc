@@ -8,18 +8,20 @@ use bevy::{
 	color::Color,
 	gizmos::gizmos::Gizmos,
 	math::{Mat2, Vec2},
-	platform::collections::HashMap,
+	platform::collections::{HashMap, HashSet},
 };
 use derive_more::{Deref, DerefMut};
 use itertools::Itertools;
 use petgraph::{
-	graph::{Graph, NodeIndex},
+	Direction::Outgoing,
+	graph::{EdgeIndex, EdgeReference, Graph, NodeIndex},
 	visit::EdgeRef,
 };
 
 use crate::{
 	constants::GENERAL_EPSILON,
 	geom::{arc::Arc, circle::Circle, misc::DrawableWithGizmos},
+	math::{diff_ccw, diff_cw},
 	util::color_hash,
 };
 
@@ -74,24 +76,66 @@ impl DrawableWithGizmos for ArcGraph {
 }
 
 impl ArcGraph {
-	pub fn minkowski(arcs: Vec<Arc>, radius: f32) -> (Self, Self) {
+	pub fn remove_edges(&mut self, ids: HashSet<EdgeIndex>) {
+		let mut edges_to_keep = vec![];
+		let ids_to_keep: HashSet<EdgeIndex> =
+			&self.edge_indices().collect::<HashSet<EdgeIndex>>() - &ids;
+		ids_to_keep.iter().unique().for_each(|&i| {
+			let e = self.edge_references().find(|e| e.id() == i).unwrap();
+			edges_to_keep.push((e.source(), e.target(), *e.weight()));
+		});
+		self.clear_edges();
+		self.extend_with_edges(edges_to_keep);
+	}
+
+	pub fn minkowski(arcs: Vec<Arc>, radius: f32) -> Self {
 		let m_arcs = arcs.iter().map(|&a| Self::minkowski_arc(a, radius));
 		let mut sum: ArcGraph = m_arcs.sum();
-		let mut edge_ids_to_remove = vec![];
+		let mut edge_ids_to_remove = HashSet::new();
 		for eref in sum.edge_references() {
 			let (i, &p) = (eref.id(), eref.weight());
-			for arc in &arcs {
+			for &arc in arcs.iter() {
 				if arc.distance_to_point(p) - radius < -GENERAL_EPSILON {
-					edge_ids_to_remove.push(i);
+					edge_ids_to_remove.insert(i);
+					continue;
 				}
 			}
 		}
-		edge_ids_to_remove.iter().for_each(|&i| {
-			sum.remove_edge(i);
-		});
-		let g = ArcGraph::default();
-		// todo: pick all edges and move one along direction
-		(sum, g)
+		sum.remove_edges(edge_ids_to_remove);
+		let mut g = ArcGraph::default();
+		for eref in sum.edge_references() {
+			let (target_id, &p) = (eref.target(), eref.weight());
+			let &target_arc = sum.node_weight(target_id).unwrap();
+			let angle_diff_func =
+				if target_arc.span < 0.0 { diff_cw } else { diff_ccw };
+			let c = target_arc.center;
+			let current_angle = (p - c).to_angle();
+			let edge_to_order = |e: EdgeReference<Vec2>| {
+				let e_angle = (e.weight() - c).to_angle();
+				angle_diff_func(current_angle, e_angle)
+			};
+			let mut next_outgoing: Vec<(EdgeReference<Vec2>, f32)> = sum
+				.edges_directed(target_id, Outgoing)
+				.filter(|e| e.id() != eref.id())
+				.map(|e| (e, edge_to_order(e)))
+				.collect();
+			next_outgoing.sort_by(|(_, x), (_, y)| x.total_cmp(y));
+			if let Some((_next, x)) = next_outgoing.first() {
+				let arc_init_func = if target_arc.span < 0.0 {
+					Arc::from_angles_cw
+				} else {
+					Arc::from_angles_ccw
+				};
+				let arc = arc_init_func(
+					current_angle,
+					current_angle + x * target_arc.span.signum(),
+					target_arc.radius,
+					target_arc.center,
+				);
+				g.add_node(arc);
+			}
+		}
+		g
 	}
 
 	pub fn minkowski_arc(arc: Arc, radius: f32) -> Self {
