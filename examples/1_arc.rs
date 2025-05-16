@@ -16,7 +16,11 @@ use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use bevy_pancam::{PanCam, PanCamPlugin};
 use rarc::{
-	geom::{arc::Arc, arc_graph::ArcGraph, misc::DrawableWithGizmos},
+	geom::{
+		arc::Arc,
+		arc_graph::ArcGraph,
+		misc::{DrawGizmosOptions, DrawableWithGizmos},
+	},
 	util::FloatResource,
 };
 
@@ -53,10 +57,10 @@ fn setup(mut commands: Commands, mut resource: ResMut<CustomResource>) {
 fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
 	let arc = resource.arc;
 	if resource.show_orignal_arc {
-		arc.draw_gizmos(&mut gizmos, None);
+		arc.draw_gizmos(&mut gizmos, &DrawGizmosOptions::default());
 	}
 	if resource.show_minkowski {
 		ArcGraph::minkowski_arc(arc, resource.time.get())
-			.draw_gizmos(&mut gizmos, None);
+			.draw_gizmos(&mut gizmos, &DrawGizmosOptions::default());
 	}
 }

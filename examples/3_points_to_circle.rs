@@ -16,7 +16,10 @@ use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use bevy_pancam::{PanCam, PanCamPlugin};
 use derive_more::{Deref, DerefMut};
 
-use rarc::geom::{circle::Circle, misc::DrawableWithGizmos};
+use rarc::geom::{
+	circle::Circle,
+	misc::{DrawGizmosOptions, DrawableWithGizmos},
+};
 
 const CIRCLE_COLORS: [Color; 4] = [
 	Color::Srgba(RED),
@@ -53,10 +56,14 @@ fn setup(mut commands: Commands, mut triple: ResMut<Vec2Triple>) {
 fn update(mut gizmos: Gizmos, triple: Res<Vec2Triple>) {
 	for (point, color) in triple.iter().zip(CIRCLE_COLORS) {
 		Circle { radius: 4.0, center: *point }
-			.draw_gizmos(&mut gizmos, Some(color));
+			.draw_gizmos(&mut gizmos, &DrawGizmosOptions::from_color(color));
 	}
 
 	let circle = Circle::from_3_points(triple[0], triple[1], triple[2]);
-	Circle { radius: 4.0, center: circle.center }.draw_gizmos(&mut gizmos, None);
-	circle.draw_gizmos(&mut gizmos, Some(Color::Srgba(GRAY)));
+	Circle { radius: 4.0, center: circle.center }
+		.draw_gizmos(&mut gizmos, &DrawGizmosOptions::default());
+	circle.draw_gizmos(
+		&mut gizmos,
+		&DrawGizmosOptions::from_color(Color::Srgba(GRAY)),
+	);
 }

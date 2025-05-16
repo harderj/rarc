@@ -1,11 +1,11 @@
 use std::{
+	default::Default,
 	f32::consts::{FRAC_PI_2, PI},
 	iter::Sum,
 	ops::Add,
 };
 
 use bevy::{
-	color::Color,
 	gizmos::gizmos::Gizmos,
 	math::{Mat2, Vec2},
 	platform::collections::{HashMap, HashSet},
@@ -24,6 +24,8 @@ use crate::{
 	math::{diff_ccw, diff_cw},
 	util::color_hash,
 };
+
+use super::misc::DrawGizmosOptions;
 
 #[derive(Clone, Default, Deref, DerefMut)]
 pub struct ArcGraph(pub Graph<Arc, Vec2>);
@@ -61,33 +63,24 @@ impl Sum for ArcGraph {
 }
 
 impl DrawableWithGizmos for ArcGraph {
-	fn draw_gizmos(&self, gizmos: &mut Gizmos, color: Option<Color>) {
-		let color_f = |i: NodeIndex| Some(color.unwrap_or(color_hash(i.index())));
+	fn draw_gizmos(&self, gizmos: &mut Gizmos, options: &DrawGizmosOptions) {
+		let options_f = |i: NodeIndex| DrawGizmosOptions {
+			color: Some(options.color.unwrap_or(color_hash(i.index()))),
+			..Default::default()
+		};
 		for i in self.node_indices() {
 			let arc = self.node_weight(i).unwrap();
-			arc.draw_gizmos(gizmos, color_f(i));
+			arc.draw_gizmos(gizmos, &options_f(i));
 		}
 		for eref in self.edge_references() {
 			let (i, j, &p) = (eref.source(), eref.target(), eref.weight());
-			Circle::new(3.0, p).draw_gizmos(gizmos, color_f(i));
-			Circle::new(6.0, p).draw_gizmos(gizmos, color_f(j));
+			Circle::new(3.0, p).draw_gizmos(gizmos, &options_f(i));
+			Circle::new(6.0, p).draw_gizmos(gizmos, &options_f(j));
 		}
 	}
 }
 
 impl ArcGraph {
-	pub fn remove_edges(&mut self, ids: HashSet<EdgeIndex>) {
-		let mut edges_to_keep = vec![];
-		let ids_to_keep: HashSet<EdgeIndex> =
-			&self.edge_indices().collect::<HashSet<EdgeIndex>>() - &ids;
-		ids_to_keep.iter().unique().for_each(|&i| {
-			let e = self.edge_references().find(|e| e.id() == i).unwrap();
-			edges_to_keep.push((e.source(), e.target(), *e.weight()));
-		});
-		self.clear_edges();
-		self.extend_with_edges(edges_to_keep);
-	}
-
 	pub fn minkowski(arcs: Vec<Arc>, radius: f32) -> Self {
 		let m_arcs = arcs.iter().map(|&a| Self::minkowski_arc(a, radius));
 		let mut sum: ArcGraph = m_arcs.sum();
@@ -192,6 +185,18 @@ impl ArcGraph {
 			}
 		}
 		ArcGraph(g)
+	}
+
+	pub fn remove_edges(&mut self, ids: HashSet<EdgeIndex>) {
+		let mut edges_to_keep = vec![];
+		let ids_to_keep: HashSet<EdgeIndex> =
+			&self.edge_indices().collect::<HashSet<EdgeIndex>>() - &ids;
+		ids_to_keep.iter().unique().for_each(|&i| {
+			let e = self.edge_references().find(|e| e.id() == i).unwrap();
+			edges_to_keep.push((e.source(), e.target(), *e.weight()));
+		});
+		self.clear_edges();
+		self.extend_with_edges(edges_to_keep);
 	}
 
 	pub fn intersect(

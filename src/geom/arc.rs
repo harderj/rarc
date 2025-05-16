@@ -10,13 +10,15 @@ use bevy::{
 };
 
 use crate::{
-	constants::{GENERAL_EPSILON, PIXEL_EPSILON},
+	constants::GENERAL_EPSILON,
 	geom::{circle::Circle, misc::DrawableWithGizmos},
 	math::{
 		bend_to_abs_angle, diff_ccw, diff_cw, is_between_ccw, is_between_cw,
 		midpoint,
 	},
 };
+
+use super::misc::DrawGizmosOptions;
 
 static ARC_DRAW_SEGMENTS: u32 = 128;
 
@@ -35,7 +37,7 @@ pub struct Arc {
 }
 
 impl DrawableWithGizmos for Arc {
-	fn draw_gizmos(&self, gizmos: &mut Gizmos, color: Option<Color>) {
+	fn draw_gizmos(&self, gizmos: &mut Gizmos, options: &DrawGizmosOptions) {
 		if self.valid() {
 			gizmos
 				.arc_2d(
@@ -45,19 +47,21 @@ impl DrawableWithGizmos for Arc {
 					),
 					self.span,
 					self.radius,
-					color.unwrap_or(Color::WHITE),
+					options.color.unwrap_or(Color::WHITE),
 				)
 				.resolution(ARC_DRAW_SEGMENTS);
-			let m = self.mid_arc_point();
-			let angle = (self.end_point() - self.start_point()).to_angle();
-			gizmos.linestrip_2d(
-				[
-					m + vec2(-5.0, 5.0).rotate(Vec2::from_angle(angle)),
-					m,
-					m + vec2(-5.0, -5.0).rotate(Vec2::from_angle(angle)),
-				],
-				color.unwrap_or(Color::WHITE),
-			);
+			if options.directions_indicators {
+				let m = self.mid_arc_point();
+				let angle = (self.end_point() - self.start_point()).to_angle();
+				gizmos.linestrip_2d(
+					[
+						m + vec2(-5.0, 5.0).rotate(Vec2::from_angle(angle)),
+						m,
+						m + vec2(-5.0, -5.0).rotate(Vec2::from_angle(angle)),
+					],
+					options.color.unwrap_or(Color::WHITE),
+				);
+			}
 		}
 	}
 }
@@ -150,7 +154,7 @@ impl Arc {
 
 	pub fn valid(self) -> bool {
 		self.params().into_iter().all(f32::is_finite)
-			&& self.radius.abs() > PIXEL_EPSILON
+			&& self.radius.abs() > GENERAL_EPSILON
 			&& self.span.abs() > GENERAL_EPSILON
 	}
 
@@ -160,6 +164,9 @@ impl Arc {
 	}
 
 	pub fn intersect(self, other: Arc) -> Vec<Vec2> {
+		if self.center.distance_squared(other.center) < GENERAL_EPSILON.powi(2) {
+			return vec![];
+		}
 		let ps = self.to_circle().intersect(other.to_circle());
 		ps.into_iter().filter(|&p| self.in_span(p) && other.in_span(p)).collect()
 	}
