@@ -3,7 +3,7 @@ use std::f32::consts::PI;
 use bevy::{
 	DefaultPlugins,
 	app::{App, Startup, Update},
-	color::palettes::css::GREEN,
+	color::{Color, palettes::css::GREEN},
 	core_pipeline::core_2d::Camera2d,
 	ecs::{
 		resource::Resource,
@@ -18,7 +18,10 @@ use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use bevy_pancam::{PanCam, PanCamPlugin};
 use rarc::{
 	geom::{
-		arc::Arc, arc_graph::ArcGraph, circle::Circle, misc::DrawableWithGizmos,
+		arc::Arc,
+		arc_graph::ArcGraph,
+		circle::Circle,
+		misc::{DrawGizmosOptions, DrawableWithGizmos},
 	},
 	util::FloatResource,
 };
@@ -64,27 +67,32 @@ fn setup(mut commands: Commands, mut resource: ResMut<CustomResource>) {
 fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
 	let (arc1, arc2) = (resource.arc1, resource.arc2);
 	if resource.show_original {
-		[arc1, arc2].map(|a| a.draw_gizmos(&mut gizmos, None));
-		arc1
-			.intersect(arc2)
-			.into_iter()
-			.for_each(|p| Circle::new(5.0, p).draw_gizmos(&mut gizmos, None));
+		[arc1, arc2]
+			.map(|a| a.draw_gizmos(&mut gizmos, &DrawGizmosOptions::default()));
+		arc1.intersect(arc2).into_iter().for_each(|p| {
+			Circle::new(5.0, p)
+				.draw_gizmos(&mut gizmos, &DrawGizmosOptions::default())
+		});
 	}
 	let ms =
 		[arc1, arc2].map(|a| ArcGraph::minkowski_arc(a, resource.time.get()));
 	if resource.show_minkowski {
 		ms.iter().for_each(|m| {
-			m.draw_gizmos(&mut gizmos, Some(bevy::color::Color::Srgba(GREEN)))
+			m.draw_gizmos(
+				&mut gizmos,
+				&DrawGizmosOptions::from_color(Color::Srgba(GREEN)),
+			)
 		});
 	}
 	let [m1, m2] = &ms;
 	if resource.show_intersections {
 		for (_, _, p) in m1.intersect(&m2) {
-			Circle::new(9.0, p).draw_gizmos(&mut gizmos, None);
+			Circle::new(9.0, p)
+				.draw_gizmos(&mut gizmos, &DrawGizmosOptions::default());
 		}
 	}
 	if resource.show_sum {
 		let m = m1.clone() + m2.clone();
-		m.draw_gizmos(&mut gizmos, None);
+		m.draw_gizmos(&mut gizmos, &DrawGizmosOptions::default());
 	}
 }

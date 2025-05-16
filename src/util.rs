@@ -4,7 +4,7 @@ use bevy::{
 	color::Color, ecs::resource::Resource, math::Vec2, reflect::Reflect,
 };
 
-use crate::constants::SAME_POINT_TOLERANCE;
+use crate::constants::GENERAL_EPSILON;
 
 #[derive(Copy, Clone, Reflect, Resource)]
 pub struct FloatResource {
@@ -29,5 +29,5 @@ impl Default for FloatResource {
 }
 
 pub fn almost_same_point(p: Vec2, q: Vec2) -> bool {
-	(p - q).length() < SAME_POINT_TOLERANCE
+	(p - q).length() < GENERAL_EPSILON
 }

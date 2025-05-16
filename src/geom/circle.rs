@@ -8,7 +8,7 @@ use bevy::{
 use derive_more::{Add, Sub};
 
 use crate::{
-	geom::misc::DrawableWithGizmos,
+	geom::misc::{DrawGizmosOptions, DrawableWithGizmos},
 	math::{midpoint, second_deg_eq},
 };
 
@@ -21,12 +21,12 @@ pub struct Circle {
 }
 
 impl DrawableWithGizmos for Circle {
-	fn draw_gizmos(&self, gizmos: &mut Gizmos, color: Option<Color>) {
+	fn draw_gizmos(&self, gizmos: &mut Gizmos, options: &DrawGizmosOptions) {
 		gizmos
 			.circle_2d(
 				Isometry2d { rotation: Default::default(), translation: self.center },
 				self.radius,
-				color.unwrap_or(Color::WHITE),
+				options.color.unwrap_or(Color::WHITE),
 			)
 			.resolution(CIRCLE_RESOLUTION);
 	}

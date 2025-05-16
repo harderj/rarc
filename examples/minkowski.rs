@@ -17,7 +17,11 @@ use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use bevy_pancam::{PanCam, PanCamPlugin};
 use rarc::{
-	geom::{arc::Arc, arc_graph::ArcGraph, misc::DrawableWithGizmos},
+	geom::{
+		arc::Arc,
+		arc_graph::ArcGraph,
+		misc::{DrawGizmosOptions, DrawableWithGizmos},
+	},
 	util::FloatResource,
 };
 
@@ -62,7 +66,9 @@ fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
 	let (arc1, arc2) = (resource.arc1, resource.arc2);
 	let arcs = vec![arc1, arc2];
 	if resource.show_original {
-		[arc1, arc2].map(|a| a.draw_gizmos(&mut gizmos, Some(Color::BLACK)));
+		[arc1, arc2].map(|a| {
+			a.draw_gizmos(&mut gizmos, &DrawGizmosOptions::from_color(Color::BLACK))
+		});
 	}
 	let radius = resource.radius.get();
 	if resource.show_minkowski_debug {
@@ -70,10 +76,10 @@ fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
 			.map(|a| ArcGraph::minkowski_arc(a, radius))
 			.into_iter()
 			.sum();
-		sum.draw_gizmos(&mut gizmos, None);
+		sum.draw_gizmos(&mut gizmos, &DrawGizmosOptions::default());
 	}
 	if resource.show_minkowski {
 		let m = ArcGraph::minkowski(arcs, radius);
-		m.draw_gizmos(&mut gizmos, Some(Color::WHITE));
+		m.draw_gizmos(&mut gizmos, &DrawGizmosOptions::from_color(Color::WHITE));
 	}
 }

@@ -1,30 +1,25 @@
-## Rarc
+## Rarc (Arcs in Rust)
 
-'Arc-polygons in rust'
+![App example](screenshot.png)
 
 ### Introduction
-Some time ago my brother gave me an algorithmic problem having to do with a
-type of 2D shape which we call an 'arc-polygon', which is
-like a regular 2D polygon but generalized to include arcs (part of a circle)
-besides regular line segments for connecting its vertices.
 
-Given such an arc-polygon $P$ and some $t \geq 0$ consider the set of points
+In plain language this is
+an algorithm that takes as input a list of arc-segments (parts of a circles)
+\+ a distance,
+and makes a boundary around them at this distance.
 
-$`Q = \left\{ x \in \mathbb{R}^2 \;|\; d(x, P) = t \right\}
-\quad \left( \text{where} \;
-d(x, P) = \inf_{y \in P} |x - y| \right)`$
+#### Mathematical description
 
-We conjecture that $Q$ can be described as a finite set of new arc-polygons.
+The problem is basically to find the boundary of a
+[*minkowski sum*](https://en.wikipedia.org/wiki/Minkowski_addition)
+of 2D shapes $A$ and $B$, where $A$ is a disc with radius $r$ and $B$ is a union of arcs.
+That is, we want to find the set
 
-#### Hence the problem:
+$` \delta B_r = \left\{ x \in \mathbb{R}^2 \;|\; \min_{y \in B} d(x, y) = r \right\}`$
 
-Implement an algorithm to find for each arc-polygon $P$
-and offset $t \geq 0$ this set of arc-polygons
-$`\{P_1, P_2, \dots, P_n\}`$ so that $`\bigcup_i P_i = Q`$.
-
-### Status
-
-Work-in-progress.
+I claim that this set can again be described as a union of arcs,
+and we want to find a list of (disjoint) arcs that make up this union.
 
 ### Setup
 
@@ -35,6 +30,18 @@ Run:
 - `cargo run`
 - `cargo run --example [name]` (checkout `./examples` folder)
 
-### Preview
+### Status
 
-![App example](/assets/ss1.png)
+Very much work-in-progress/alpha. Issues include:
+- Numerical instabilities
+- Lack of support for lines (can be viewed as the special case when $r \to \infty$)
+
+### Related projects
+
+Minkowski addition is already implemented in the case where $A$ and $B$ are both polygons
+- https://samestep.github.io/minkowski/ (in Rust)
+- https://doc.cgal.org/latest/Minkowski_sum_2/index.html#Chapter_2D_Minkowski_Sums (in C++)
+
+Using these solutions with $A$ and $B$ being polygons approximating the disc and arcs,
+gives a (probably faster and more stable) solution,
+albeit in the form of approximating polygons.
