@@ -102,7 +102,7 @@ fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
 		sum.draw_gizmos(&mut gizmos, &DrawGizmosOptions::default());
 	}
 	if resource.show_minkowski {
-		let m = ArcGraph::minkowski(arcs, radius);
+		let m = ArcGraph::minkowski(&arcs, radius);
 		m.draw_gizmos(&mut gizmos, &DrawGizmosOptions::from_color(Color::WHITE));
 	}
 }

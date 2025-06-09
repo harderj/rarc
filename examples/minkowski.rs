@@ -32,6 +32,7 @@ struct CustomResource {
 	radius: FloatResource,
 	show_original: bool,
 	show_minkowski_debug: bool,
+	trim_edges: bool,
 	show_minkowski: bool,
 	n: usize,
 }
@@ -58,8 +59,9 @@ fn setup(mut commands: Commands, mut resource: ResMut<CustomResource>) {
 		Arc { mid: -9.0, span: PI, radius: 150.0, center: Vec2::X * 30.0 };
 	resource.radius = FloatResource { scale: 10.0, value: 5.0 };
 	resource.show_original = true;
-	resource.show_minkowski_debug = false;
-	resource.show_minkowski = true;
+	resource.show_minkowski_debug = true;
+	resource.trim_edges = true;
+	resource.show_minkowski = false;
 }
 
 fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
@@ -72,14 +74,17 @@ fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
 	}
 	let radius = resource.radius.get();
 	if resource.show_minkowski_debug {
-		let sum: ArcGraph = [arc1, arc2]
+		let mut sum: ArcGraph = [arc1, arc2]
 			.map(|a| ArcGraph::minkowski_arc(a, radius))
 			.into_iter()
 			.sum();
+		if resource.trim_edges {
+			sum.trim_edges(&arcs, radius)
+		};
 		sum.draw_gizmos(&mut gizmos, &DrawGizmosOptions::default());
 	}
 	if resource.show_minkowski {
-		let m = ArcGraph::minkowski(arcs, radius);
+		let m = ArcGraph::minkowski(&arcs, radius);
 		m.draw_gizmos(&mut gizmos, &DrawGizmosOptions::from_color(Color::WHITE));
 	}
 }

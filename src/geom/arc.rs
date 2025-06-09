@@ -189,3 +189,12 @@ impl Arc {
 		f(self.start_angle(), end_angle, self.radius, self.center)
 	}
 }
+
+pub fn distance_to_arcs<'a>(
+	point: Vec2,
+	arcs: impl Iterator<Item = Arc>,
+) -> Option<f32> {
+	arcs
+		.map(|arc| arc.distance_to_point(point))
+		.min_by(|x, y| x.partial_cmp(y).unwrap())
+}

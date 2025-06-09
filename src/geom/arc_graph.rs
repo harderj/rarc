@@ -8,19 +8,23 @@ use std::{
 use bevy::{
 	gizmos::gizmos::Gizmos,
 	math::{Mat2, Vec2},
-	platform::collections::{HashMap, HashSet},
+	platform::collections::HashMap,
 };
 use derive_more::{Deref, DerefMut};
 use itertools::Itertools;
 use petgraph::{
 	Direction::Outgoing,
-	graph::{EdgeIndex, EdgeReference, Graph, NodeIndex},
+	graph::{EdgeReference, Graph, NodeIndex},
 	visit::EdgeRef,
 };
 
 use crate::{
 	constants::GENERAL_EPSILON,
-	geom::{arc::Arc, circle::Circle, misc::DrawableWithGizmos},
+	geom::{
+		arc::{Arc, distance_to_arcs},
+		circle::Circle,
+		misc::DrawableWithGizmos,
+	},
 	math::{diff_ccw, diff_cw},
 	util::color_hash,
 };
@@ -81,20 +85,13 @@ impl DrawableWithGizmos for ArcGraph {
 }
 
 impl ArcGraph {
-	pub fn minkowski(arcs: Vec<Arc>, radius: f32) -> Self {
+	pub fn minkowski(arcs: &Vec<Arc>, radius: f32) -> Self {
+		if arcs.is_empty() {
+			return Self::default();
+		}
 		let m_arcs = arcs.iter().map(|&a| Self::minkowski_arc(a, radius));
 		let mut sum: ArcGraph = m_arcs.sum();
-		let mut edge_ids_to_remove = HashSet::new();
-		for eref in sum.edge_references() {
-			let (i, &p) = (eref.id(), eref.weight());
-			for &arc in arcs.iter() {
-				if arc.distance_to_point(p) - radius < -GENERAL_EPSILON {
-					edge_ids_to_remove.insert(i);
-					continue;
-				}
-			}
-		}
-		sum.remove_edges(edge_ids_to_remove);
+		sum.trim_edges(arcs, radius);
 		let mut g = ArcGraph::default();
 		for eref in sum.edge_references() {
 			let (target_id, &p) = (eref.target(), eref.weight());
@@ -187,16 +184,12 @@ impl ArcGraph {
 		ArcGraph(g)
 	}
 
-	pub fn remove_edges(&mut self, ids: HashSet<EdgeIndex>) {
-		let mut edges_to_keep = vec![];
-		let ids_to_keep: HashSet<EdgeIndex> =
-			&self.edge_indices().collect::<HashSet<EdgeIndex>>() - &ids;
-		ids_to_keep.iter().unique().for_each(|&i| {
-			let e = self.edge_references().find(|e| e.id() == i).unwrap();
-			edges_to_keep.push((e.source(), e.target(), *e.weight()));
+	pub fn trim_edges(&mut self, arcs: &Vec<Arc>, radius: f32) {
+		self.retain_edges(|g, ei| {
+			let point = *g.edge_weight(ei).unwrap();
+			distance_to_arcs(point, arcs.iter().copied()).unwrap() - radius
+				> -GENERAL_EPSILON
 		});
-		self.clear_edges();
-		self.extend_with_edges(edges_to_keep);
 	}
 
 	pub fn intersect(
