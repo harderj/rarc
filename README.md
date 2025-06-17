@@ -5,7 +5,7 @@
 ### Introduction
 
 In plain language this is
-an algorithm that takes as input a list of arc-segments (parts of a circles)
+an algorithm that takes as input a list of arc-segments
 \+ a distance,
 and makes a boundary around them at this distance.
 
