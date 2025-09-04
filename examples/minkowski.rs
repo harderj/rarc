@@ -68,7 +68,7 @@ fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
 	let (arc1, arc2) = (resource.arc1, resource.arc2);
 	let arcs = vec![arc1, arc2];
 	if resource.show_original {
-		[arc1, arc2].map(|a| {
+		[arc1, arc2].iter().for_each(|a| {
 			a.draw_gizmos(&mut gizmos, &DrawGizmosOptions::from_color(Color::BLACK))
 		});
 	}

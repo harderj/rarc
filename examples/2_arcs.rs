@@ -68,7 +68,8 @@ fn update(mut gizmos: Gizmos, resource: ResMut<CustomResource>) {
 	let (arc1, arc2) = (resource.arc1, resource.arc2);
 	if resource.show_original {
 		[arc1, arc2]
-			.map(|a| a.draw_gizmos(&mut gizmos, &DrawGizmosOptions::default()));
+			.iter()
+			.for_each(|a| a.draw_gizmos(&mut gizmos, &DrawGizmosOptions::default()));
 		arc1.intersect(arc2).into_iter().for_each(|p| {
 			Circle::new(5.0, p)
 				.draw_gizmos(&mut gizmos, &DrawGizmosOptions::default())
